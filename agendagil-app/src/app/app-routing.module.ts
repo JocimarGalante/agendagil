@@ -6,10 +6,12 @@ import { LoginComponent } from './auth/login/login.component';
 import { RegisterComponent } from './auth/register/register.component';
 import { AgendaComponent } from './scheduling/agenda/agenda.component';
 import { AuthGuard } from './auth/auth.guard'; // certifique-se de importar corretamente
+import { EsqueciSenhaComponent } from '@auth/esqueci-senha/esqueci-senha.component';
 
 const routes: Routes = [
   { path: '', component: LoginComponent },
   { path: 'cadastro', component: RegisterComponent },
+  { path: 'esqueci-senha', component: EsqueciSenhaComponent },
 
   // ROTAS PROTEGIDAS
   { path: 'home', component: HomeComponent, canActivate: [AuthGuard] },
