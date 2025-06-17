@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@auth/auth.service';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-login',
@@ -34,8 +35,24 @@ export class LoginComponent {
         },
         error: err => {
           this.loading = false;
+
+          // Mostra o alerta com SweetAlert2
+          Swal.fire({
+            title: 'Erro no login',
+            text: 'Email ou senha inválidos!',
+            icon: 'error',
+            confirmButtonColor: '#1B4F72'
+          });
+
           this.errorMessage = err.message || 'Erro no login. Verifique seus dados.';
         }
+      });
+    } else {
+      Swal.fire({
+        title: 'Campos inválidos',
+        text: 'Preencha corretamente todos os campos.',
+        icon: 'warning',
+        confirmButtonColor: '#1B4F72'
       });
     }
   }
