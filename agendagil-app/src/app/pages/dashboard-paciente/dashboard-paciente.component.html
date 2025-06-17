@@ -1,0 +1,33 @@
+<div class="d-flex flex-column min-vh-100 bg-main">
+  <!-- Conteúdo principal -->
+  <main class="flex-grow-1 py-5">
+    <div class="container">
+      <!-- Cabeçalho -->
+      <section class="text-center mb-5">
+        <h2 class="fw-bold text-white">Olá, {{usuario?.nome}}</h2>
+        <p class="text-light">Acesse seus serviços de forma rápida e prática</p>
+      </section>
+
+      <!-- Cards -->
+      <section class="row g-4">
+        <div class="col-sm-6 col-lg-4" *ngFor="let item of cards">
+          <div class="card shadow-sm border-0 h-100 hover-card">
+            <div class="card-body text-center">
+              <div class="mb-3">
+                <i class="{{ item.icone }} fs-1 text-main"></i>
+              </div>
+              <h5 class="card-title fw-semibold text-main">{{ item.titulo }}</h5>
+              <p class="card-text text-muted">{{ item.descricao }}</p>
+              <a [routerLink]="item.link" class="btn btn-sm px-4" style="background-color: #28B463; color: white;">
+                Acessar
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer fixado no final da tela -->
+  <app-footer></app-footer>
+</div>
