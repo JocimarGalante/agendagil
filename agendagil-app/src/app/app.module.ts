@@ -13,8 +13,7 @@ import { AuthModule } from '@auth/auth.module';
   declarations: [
     AppComponent,
     FooterComponent,
-    HeaderComponent,
-    HomeComponent
+    HeaderComponent
   ],
   imports: [
     BrowserModule,
