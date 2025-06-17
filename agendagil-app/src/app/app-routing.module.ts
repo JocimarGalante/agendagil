@@ -5,13 +5,17 @@ import { HomeComponent } from './pages/home/home.component';
 import { LoginComponent } from './auth/login/login.component';
 import { RegisterComponent } from './auth/register/register.component';
 import { AgendaComponent } from './scheduling/agenda/agenda.component';
+import { AuthGuard } from './auth/auth.guard'; // certifique-se de importar corretamente
 
 const routes: Routes = [
   { path: '', component: LoginComponent },
-  { path: 'home', component: HomeComponent },
   { path: 'cadastro', component: RegisterComponent },
-  { path: 'agenda', component: AgendaComponent },
-  { path: '**', redirectTo: '' } // rota curinga
+
+  // ROTAS PROTEGIDAS
+  { path: 'home', component: HomeComponent, canActivate: [AuthGuard] },
+  { path: 'agenda', component: AgendaComponent, canActivate: [AuthGuard] },
+
+  { path: '**', redirectTo: '' }
 ];
 
 @NgModule({

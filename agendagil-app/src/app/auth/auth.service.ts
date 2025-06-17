@@ -15,7 +15,17 @@ export class AuthService {
   );
   public currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+    const expiration = localStorage.getItem('tokenExpiration');
+    const now = new Date().getTime();
+
+    if (usuario && expiration && now < parseInt(expiration)) {
+      this.currentUserSubject.next(usuario);
+    } else {
+      this.logout();
+    }
+  }
 
   login(email: string, senha: string): Observable<Usuario> {
     return this.http.get<Usuario[]>(`${this.apiUrl}?email=${email}&senha=${senha}`)
@@ -28,8 +38,10 @@ export class AuthService {
           }
         }),
         tap(user => {
-          this.currentUserSubject.next(user);
+          const expirationTime = new Date().getTime() + 60 * 60 * 1000; // 1 hora
           localStorage.setItem('usuarioLogado', JSON.stringify(user));
+          localStorage.setItem('tokenExpiration', expirationTime.toString());
+          this.currentUserSubject.next(user);
         }),
         catchError(err => {
           return throwError(() => new Error(err.message || 'Erro no login'));
@@ -40,9 +52,18 @@ export class AuthService {
   logout(): void {
     this.currentUserSubject.next(null);
     localStorage.removeItem('usuarioLogado');
+    localStorage.removeItem('tokenExpiration');
   }
 
   getUsuarioLogado(): Usuario | null {
+    const expiration = localStorage.getItem('tokenExpiration');
+    const now = new Date().getTime();
+
+    if (expiration && now > parseInt(expiration)) {
+      this.logout(); // expira
+      return null;
+    }
+
     return this.currentUserSubject.value;
   }
 
