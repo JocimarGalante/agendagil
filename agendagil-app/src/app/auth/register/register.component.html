@@ -1,1 +1,122 @@
-<p>register works!</p>
+<div class="d-flex flex-column justify-content-between min-vh-100" style="background-color: #1b4f72">
+  <div class="d-flex justify-content-center align-items-center flex-grow-1">
+    <div
+      class="card p-4 shadow"
+      style="width: 100%; max-width: 400px; border-radius: 10px"
+    >
+      <!-- Logo -->
+      <div class="text-center mb-3">
+        <img src="../../../assets/logo.jpg" alt="AgendAgil Logo" width="200" />
+      </div>
+
+      <!-- Formulário de Registro -->
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+        <div>
+          <label for="nome" class="form-label text-white">Nome completo</label>
+          <input
+            type="text"
+            id="nome"
+            class="form-control"
+            placeholder="Digite seu nome completo"
+            formControlName="nome"
+            [ngClass]="{
+              'is-invalid':
+                registerForm.get('nome')?.invalid &&
+                registerForm.get('nome')?.touched
+            }"
+          />
+          <div
+            *ngIf="
+              registerForm.get('nome')?.invalid &&
+              registerForm.get('nome')?.touched
+            "
+            class="invalid-feedback"
+          >
+            Nome é obrigatório.
+          </div>
+        </div>
+
+        <div>
+          <label for="email" class="form-label text-white">Email</label>
+          <input
+            type="email"
+            id="email"
+            class="form-control"
+            placeholder="Digite seu email"
+            formControlName="email"
+            [ngClass]="{
+              'is-invalid':
+                registerForm.get('email')?.invalid &&
+                registerForm.get('email')?.touched
+            }"
+          />
+          <div
+            *ngIf="
+              registerForm.get('email')?.invalid &&
+              registerForm.get('email')?.touched
+            "
+            class="invalid-feedback"
+          >
+            <div *ngIf="registerForm.get('email')?.errors?.required">
+              Email é obrigatório.
+            </div>
+            <div *ngIf="registerForm.get('email')?.errors?.email">
+              Digite um email válido.
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="senha" class="form-label text-white">Senha</label>
+          <input
+            type="password"
+            id="senha"
+            class="form-control"
+            placeholder="Digite sua senha"
+            formControlName="senha"
+            [ngClass]="{
+              'is-invalid':
+                registerForm.get('senha')?.invalid &&
+                registerForm.get('senha')?.touched
+            }"
+          />
+          <div
+            *ngIf="
+              registerForm.get('senha')?.invalid &&
+              registerForm.get('senha')?.touched
+            "
+            class="invalid-feedback"
+          >
+            Senha é obrigatória.
+          </div>
+        </div>
+
+        <!-- Tipo oculto -->
+        <input type="hidden" formControlName="tipo" />
+
+        <button
+          type="submit"
+          class="btn btn-success w-100 mb-2"
+          [disabled]="registerForm.invalid"
+          style="background-color: #28b463"
+        >
+          Criar Conta
+        </button>
+      </form>
+
+      <div class="text-center mt-3 border-top pt-3">
+        <span class="text-white d-block mb-1">Já tem uma conta?</span>
+        <a
+          routerLink="/"
+          class="btn btn-outline-light btn-sm px-4"
+          style="border-color: #28b463; color: #28b463"
+        >
+          Fazer login
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <app-footer></app-footer>
+</div>
