@@ -6,6 +6,9 @@ import { DashboardMedicoComponent } from './dashboard-medico/dashboard-medico.co
 import { DashboardAdminComponent } from './dashboard-admin/dashboard-admin.component';
 import { CoreModule } from 'core/core.module';
 import { RouterModule } from '@angular/router';
+import { ConsultasComponent } from './dashboard-paciente/consultas/consultas.component';
+import { NotificacoesComponent } from './dashboard-paciente/notificacoes/notificacoes.component';
+import { HistoricoComponent } from './dashboard-paciente/historico/historico.component';
 
 
 
@@ -14,7 +17,10 @@ import { RouterModule } from '@angular/router';
     HomeComponent,
     DashboardPacienteComponent,
     DashboardMedicoComponent,
-    DashboardAdminComponent
+    DashboardAdminComponent,
+    ConsultasComponent,
+    NotificacoesComponent,
+    HistoricoComponent
   ],
   imports: [
     CommonModule,

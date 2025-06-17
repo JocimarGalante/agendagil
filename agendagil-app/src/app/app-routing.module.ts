@@ -10,12 +10,24 @@ import { EsqueciSenhaComponent } from '@auth/esqueci-senha/esqueci-senha.compone
 import { DashboardPacienteComponent } from 'pages/dashboard-paciente/dashboard-paciente.component';
 import { DashboardMedicoComponent } from 'pages/dashboard-medico/dashboard-medico.component';
 import { DashboardAdminComponent } from 'pages/dashboard-admin/dashboard-admin.component';
+import { ConsultasComponent } from 'pages/dashboard-paciente/consultas/consultas.component';
+import { NotificacoesComponent } from 'pages/dashboard-paciente/notificacoes/notificacoes.component';
+import { HistoricoComponent } from 'pages/dashboard-paciente/historico/historico.component';
 
 const routes: Routes = [
   { path: '', component: LoginComponent },
   { path: 'cadastro', component: RegisterComponent },
   { path: 'esqueci-senha', component: EsqueciSenhaComponent },
-  { path: 'dashboard-paciente', component: DashboardPacienteComponent },
+  {
+    path: 'dashboard-paciente',
+    component: DashboardPacienteComponent,
+    children: [
+      { path: 'consultas', component: ConsultasComponent },
+      { path: 'notificacoes', component: NotificacoesComponent },
+      { path: 'historico', component: HistoricoComponent },
+      { path: '', redirectTo: 'consultas', pathMatch: 'full' },
+    ],
+  },
   { path: 'dashboard-medico', component: DashboardMedicoComponent },
   { path: 'dashboard-admin', component: DashboardAdminComponent },
 
@@ -23,11 +35,11 @@ const routes: Routes = [
   { path: 'home', component: HomeComponent, canActivate: [AuthGuard] },
   { path: 'agenda', component: AgendaComponent, canActivate: [AuthGuard] },
 
-  { path: '**', redirectTo: '' }
+  { path: '**', redirectTo: '' },
 ];
 
 @NgModule({
   imports: [RouterModule.forRoot(routes)],
-  exports: [RouterModule]
+  exports: [RouterModule],
 })
-export class AppRoutingModule { }
+export class AppRoutingModule {}

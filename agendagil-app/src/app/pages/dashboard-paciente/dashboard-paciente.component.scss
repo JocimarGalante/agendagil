@@ -6,11 +6,41 @@
   color: #1B4F72;
 }
 
-.hover-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+.sidebar {
+  width: 220px;
+  transition: width 0.3s;
+  overflow: hidden;
 
-.hover-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  &.collapsed {
+    width: 70px;
+
+    .nav-link {
+      text-align: center;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    .nav-link span {
+      display: none;
+    }
+
+    h5 {
+      display: none;
+    }
+  }
+
+  .nav-link {
+    padding: 10px;
+    transition: background 0.2s;
+    border-radius: 6px;
+
+    &:hover {
+      background-color: #28B463;
+      color: white !important;
+    }
+  }
+
+  .bi {
+    font-size: 1.2rem;
+  }
 }
