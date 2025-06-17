@@ -16,7 +16,6 @@ export class HomeComponent implements OnInit {
 
   ngOnInit(): void {
     this.usuario = this.authService.getUsuarioLogado();
-    console.log(this.usuario?.tipo)
   }
 
 }

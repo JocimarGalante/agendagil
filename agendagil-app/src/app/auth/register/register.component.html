@@ -1,4 +1,7 @@
-<div class="d-flex flex-column justify-content-between min-vh-100" style="background-color: #1b4f72">
+<div
+  class="d-flex flex-column justify-content-between min-vh-100"
+  style="background-color: #1b4f72"
+>
   <div class="d-flex justify-content-center align-items-center flex-grow-1">
     <div
       class="card p-4 shadow"
@@ -74,12 +77,15 @@
             class="form-control"
             placeholder="Digite sua senha"
             formControlName="senha"
+            (input)="avaliarForcaSenha()"
             [ngClass]="{
               'is-invalid':
                 registerForm.get('senha')?.invalid &&
                 registerForm.get('senha')?.touched
             }"
           />
+
+          <!-- Mensagem de erro -->
           <div
             *ngIf="
               registerForm.get('senha')?.invalid &&
@@ -88,6 +94,23 @@
             class="invalid-feedback"
           >
             Senha é obrigatória.
+          </div>
+
+          <!-- Indicador de força da senha -->
+          <div class="mt-2" *ngIf="registerForm.get('senha')?.value">
+            <div class="progress" style="height: 6px">
+              <div
+                class="progress-bar"
+                role="progressbar"
+                [ngStyle]="{
+                  width: forcaSenha.porcentagem,
+                  backgroundColor: forcaSenha.cor
+                }"
+              ></div>
+            </div>
+            <small [style.color]="forcaSenha.cor">
+              {{ forcaSenha.texto }}
+            </small>
           </div>
         </div>
 

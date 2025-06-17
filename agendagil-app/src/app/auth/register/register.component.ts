@@ -11,7 +11,11 @@ import Swal from 'sweetalert2';
 })
 export class RegisterComponent implements OnInit {
   registerForm!: FormGroup;
-
+  forcaSenha = {
+    texto: '',
+    cor: '',
+    porcentagem: '0%',
+  };
   constructor(
     private fb: FormBuilder,
     private registerService: RegisterService
@@ -54,6 +58,58 @@ export class RegisterComponent implements OnInit {
         text: 'Preencha todos os campos corretamente.',
         confirmButtonColor: '#F1C40F',
       });
+    }
+  }
+  avaliarForcaSenha(): void {
+    const senha = this.registerForm.get('senha')?.value || '';
+
+    if (!senha) {
+      this.forcaSenha = {
+        texto: '',
+        cor: '',
+        porcentagem: '0%',
+      };
+      return;
+    }
+
+    let pontuacao = 0;
+    if (senha.length >= 8) pontuacao++;
+    if (/[A-Z]/.test(senha)) pontuacao++;
+    if (/[a-z]/.test(senha)) pontuacao++;
+    if (/[0-9]/.test(senha)) pontuacao++;
+    if (/[^A-Za-z0-9]/.test(senha)) pontuacao++;
+
+    switch (pontuacao) {
+      case 0:
+      case 1:
+        this.forcaSenha = {
+          texto: 'Senha fraca',
+          cor: '#e74c3c',
+          porcentagem: '25%',
+        };
+        break;
+      case 2:
+      case 3:
+        this.forcaSenha = {
+          texto: 'Senha média',
+          cor: '#f1c40f',
+          porcentagem: '50%',
+        };
+        break;
+      case 4:
+        this.forcaSenha = {
+          texto: 'Senha boa',
+          cor: '#2ecc71',
+          porcentagem: '75%',
+        };
+        break;
+      case 5:
+        this.forcaSenha = {
+          texto: 'Senha forte',
+          cor: '#28b463',
+          porcentagem: '100%',
+        };
+        break;
     }
   }
 }
