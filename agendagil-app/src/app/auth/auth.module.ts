@@ -4,7 +4,7 @@ import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
 import { ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
-
+import { CoreModule } from "../core/core.module";
 
 
 @NgModule({
@@ -15,8 +15,9 @@ import { HttpClientModule } from '@angular/common/http';
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    HttpClientModule
-  ],
+    HttpClientModule,
+    CoreModule
+],
   exports: [
     LoginComponent,
     RegisterComponent

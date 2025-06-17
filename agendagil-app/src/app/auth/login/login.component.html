@@ -1,65 +1,70 @@
-<div class="d-flex justify-content-center align-items-center vh-100" style="background-color: #1B4F72;">
-  <div class="card p-4 shadow" style="width: 350px; border-radius: 10px;">
+<div class="d-flex flex-column vh-100" style="background-color: #1B4F72;">
 
-    <!-- Logo -->
-    <div class="text-center mb-3">
-      <img src="./../../../assets/logo.jpg" alt="AgendAgil Logo" width="200" />
-    </div>
+  <!-- Conteúdo principal centralizado -->
+  <div class="d-flex justify-content-center align-items-center flex-grow-1">
+    <div class="card p-4 shadow" style="width: 350px; border-radius: 10px;">
 
-    <!-- Formulário -->
-    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-      <div>
-        <label for="email" class="form-label text-white">Email</label>
-        <input
-          type="email"
-          id="email"
-          class="form-control"
-          placeholder="Digite seu email"
-          formControlName="email"
-          [ngClass]="{'is-invalid': loginForm.get('email')?.invalid && loginForm.get('email')?.touched}"
-        />
-        <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="invalid-feedback">
-          <div *ngIf="loginForm.get('email')?.errors?.required">Email é obrigatório.</div>
-          <div *ngIf="loginForm.get('email')?.errors?.email">Digite um email válido.</div>
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <label for="senha" class="form-label text-white">Senha</label>
-        <input
-          type="password"
-          id="senha"
-          class="form-control"
-          placeholder="Digite sua senha"
-          formControlName="senha"
-          [ngClass]="{'is-invalid': loginForm.get('senha')?.invalid && loginForm.get('senha')?.touched}"
-        />
-        <div *ngIf="loginForm.get('senha')?.invalid && loginForm.get('senha')?.touched" class="invalid-feedback">
-          <div *ngIf="loginForm.get('senha')?.errors?.required">Senha é obrigatória.</div>
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        class="btn btn-success w-100 mb-2"
-        [disabled]="loginForm.invalid"
-        style="background-color: #28B463;">
-        Entrar
-      </button>
-
-      <!-- Esqueci a senha -->
+      <!-- Logo -->
       <div class="text-center mb-3">
-        <a href="#" class="text-decoration-none small" style="color: #28B463;">Esqueci minha senha</a>
+        <img src="./../../../assets/logo.jpg" alt="AgendAgil Logo" width="200" />
       </div>
-    </form>
 
-    <!-- Criar conta separado -->
-    <div class="text-center mt-3 border-top pt-3">
-      <span class="text-white d-block mb-1">Não tem uma conta?</span>
-      <a href="#" class="btn btn-outline-light btn-sm px-4" style="border-color: #28B463; color: #28B463;">
-        Criar conta
-      </a>
+      <!-- Formulário -->
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+        <div>
+          <label for="email" class="form-label text-white">Email</label>
+          <input
+            type="email"
+            id="email"
+            class="form-control"
+            placeholder="Digite seu email"
+            formControlName="email"
+            [ngClass]="{'is-invalid': loginForm.get('email')?.invalid && loginForm.get('email')?.touched}"
+          />
+          <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="invalid-feedback">
+            <div *ngIf="loginForm.get('email')?.errors?.required">Email é obrigatório.</div>
+            <div *ngIf="loginForm.get('email')?.errors?.email">Digite um email válido.</div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="senha" class="form-label text-white">Senha</label>
+          <input
+            type="password"
+            id="senha"
+            class="form-control"
+            placeholder="Digite sua senha"
+            formControlName="senha"
+            [ngClass]="{'is-invalid': loginForm.get('senha')?.invalid && loginForm.get('senha')?.touched}"
+          />
+          <div *ngIf="loginForm.get('senha')?.invalid && loginForm.get('senha')?.touched" class="invalid-feedback">
+            <div *ngIf="loginForm.get('senha')?.errors?.required">Senha é obrigatória.</div>
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          class="btn w-100 mb-2"
+          [disabled]="loginForm.invalid"
+          style="background-color: #28B463; color: #fff;">
+          Entrar
+        </button>
+
+        <!-- Esqueci a senha -->
+        <div class="text-center mb-3">
+          <a href="#" class="text-decoration-none small" style="color: #28B463;">Esqueci minha senha</a>
+        </div>
+      </form>
+
+      <!-- Criar conta -->
+      <div class="text-center mt-3 border-top pt-3">
+        <span class="text-white d-block mb-1">Não tem uma conta?</span>
+        <a href="#" class="btn btn-outline-light btn-sm px-4" style="border-color: #28B463; color: #28B463;">
+          Criar conta
+        </a>
+      </div>
+
     </div>
-
   </div>
+  <app-footer></app-footer>
 </div>
