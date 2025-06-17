@@ -3,6 +3,6 @@ export interface Usuario {
   nome: string;
   email: string;
   senha?: string;
-  tipo: 'paciente' | 'medico';
+  tipo: 'paciente' | 'medico' | 'administrador';
   especialidade?: string; // apenas para médico
 }

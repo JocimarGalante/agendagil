@@ -1,1 +1,49 @@
-<p>home works!</p>
+<div class="py-5" style="min-height: 100vh; background-color: #1B4F72;">
+  <div class="text-center mb-5 text-white">
+    <h1 class="display-4 fw-bold">Bem-vindo, {{ usuario?.nome }}</h1>
+    <p class="fs-4">Você está logado como <span class="text-success fw-semibold">{{ usuario?.tipo | titlecase }}</span></p>
+  </div>
+
+  <div class="d-flex justify-content-center">
+    <!-- Paciente -->
+    <div *ngIf="usuario?.tipo === 'paciente'" class="card shadow-lg p-4" style="width: 320px; border-radius: 15px; background-color: #FFFFFF;">
+      <div class="text-center mb-3">
+        <i class="bi bi-person-heart fs-1 text-success"></i>
+      </div>
+      <h3 class="text-center text-primary mb-4">Área do Paciente</h3>
+
+      <button class="btn btn-success w-100 mb-3 fw-bold" style="background-color: #28B463; border: none; box-shadow: 0 4px 10px rgba(40, 180, 99, 0.4);">
+        Agendar Consulta
+      </button>
+      <button class="btn btn-outline-danger w-100 fw-semibold" style="border-width: 2px;">
+        Cancelar Agendamento
+      </button>
+    </div>
+
+    <!-- Médico -->
+    <div *ngIf="usuario?.tipo === 'medico'" class="card shadow-lg p-4 mx-4" style="width: 320px; border-radius: 15px; background-color: #FFFFFF;">
+      <div class="text-center mb-3">
+        <i class="bi bi-stethoscope fs-1 text-primary"></i>
+      </div>
+      <h3 class="text-center text-primary mb-4">Área do Médico</h3>
+      <p class="text-secondary text-center">Aqui você verá a lista dos pacientes agendados para consulta.</p>
+      <!-- Exemplo de lista, substituir pelo real -->
+      <ul class="list-group">
+        <li class="list-group-item">Paciente 1 - 10/07/2025</li>
+        <li class="list-group-item">Paciente 2 - 11/07/2025</li>
+        <li class="list-group-item">Paciente 3 - 12/07/2025</li>
+      </ul>
+    </div>
+
+    <!-- Administrador -->
+    <div *ngIf="usuario?.tipo === 'administrador'" class="card shadow-lg p-4" style="width: 320px; border-radius: 15px; background-color: #FFFFFF;">
+      <div class="text-center mb-3">
+        <i class="bi bi-gear-fill fs-1 text-danger"></i>
+      </div>
+      <h3 class="text-center text-primary mb-4">Área do Administrador</h3>
+      <button class="btn btn-primary w-100 fw-bold" style="background-color: #1B4F72; border:none; box-shadow: 0 4px 10px rgba(27, 79, 114, 0.6);">
+        Cadastrar Médicos
+      </button>
+    </div>
+  </div>
+</div>
