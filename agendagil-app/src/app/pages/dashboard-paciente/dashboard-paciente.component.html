@@ -1,13 +1,25 @@
-<div class="d-flex min-vh-100">
+<div class="d-flex min-vh-100 flex-column flex-md-row">
   <!-- Sidebar -->
-  <div [class.collapsed]="isCollapsed" class="sidebar bg-main text-white p-3">
+  <div
+    [class.collapsed]="isCollapsed"
+    [ngClass]="{
+      'sidebar': true,
+      'bg-main': true,
+      'text-white': true,
+      'p-3': true,
+      'd-none': isMobile && isCollapsed,
+      'd-block': !isMobile || !isCollapsed
+    }"
+  >
+    <!-- Título + Botão -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h5 class="m-0">Olá, {{ primeiroNome }}</h5>
-      <button class="btn btn-sm btn-light text-main" (click)="toggleSidebar()">
-        <i class="bi" [ngClass]="isCollapsed ? 'bi-chevron-right' : 'bi-chevron-left'"></i>
+      <button class="btn btn-sm btn-light text-main d-md-none" (click)="toggleSidebar()">
+        <i class="bi" [ngClass]="isCollapsed ? 'bi-list' : 'bi-x'"></i>
       </button>
     </div>
 
+    <!-- Menu -->
     <ul class="nav flex-column">
       <li class="nav-item">
         <a class="nav-link text-white" routerLink="consultas">
@@ -32,8 +44,12 @@
     </ul>
   </div>
 
-  <!-- Main Content -->
+  <!-- Conteúdo principal -->
   <div class="flex-grow-1 p-4 bg-light">
+    <!-- Botão toggle visível só no mobile -->
+    <button class="btn btn-outline-primary mb-2 d-md-none" (click)="toggleSidebar()">
+      <i class="bi" [ngClass]="isCollapsed ? 'bi-list' : 'bi-x'"></i>
+    </button>
     <router-outlet></router-outlet>
   </div>
 </div>
