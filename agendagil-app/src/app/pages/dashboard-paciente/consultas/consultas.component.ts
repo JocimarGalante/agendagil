@@ -54,15 +54,39 @@ export class ConsultasComponent implements OnInit {
       if (result.isConfirmed) {
         consulta.status = StatusConsulta.Cancelada;
 
-        Swal.fire({
-          title: 'Cancelada!',
-          text: 'A consulta foi cancelada com sucesso.',
-          icon: 'success',
-          confirmButtonText: 'OK',
-          buttonsStyling: true,
-          customClass: {
-            confirmButton: 'btn btn-success swal2-confirm-custom',
-            popup: 'swal2-border-radius',
+        this.consultaService.atualizarConsulta(id, consulta).subscribe({
+          next: (consultaAtualizada) => {
+            // Atualiza a lista local para refletir a mudança
+            const index = this.consultas.findIndex((c) => c.id === id);
+            if (index !== -1) {
+              this.consultas[index] = consultaAtualizada;
+            }
+
+            Swal.fire({
+              title: 'Cancelada!',
+              text: 'A consulta foi cancelada com sucesso.',
+              icon: 'success',
+              confirmButtonText: 'OK',
+              buttonsStyling: true,
+              customClass: {
+                confirmButton: 'btn btn-success swal2-confirm-custom',
+                popup: 'swal2-border-radius',
+              },
+            });
+          },
+          error: (err) => {
+            console.error('Erro ao cancelar consulta', err);
+            Swal.fire({
+              title: 'Erro',
+              text: 'Não foi possível cancelar a consulta. Tente novamente.',
+              icon: 'error',
+              confirmButtonText: 'OK',
+              buttonsStyling: true,
+              customClass: {
+                confirmButton: 'btn btn-danger swal2-confirm-custom',
+                popup: 'swal2-border-radius',
+              },
+            });
           },
         });
       }
@@ -70,7 +94,75 @@ export class ConsultasComponent implements OnInit {
   }
 
   reagendarConsulta(consulta: Consulta): void {
-    console.log('Reagendando consulta:', consulta);
-    // Exemplo: this.router.navigate(['/reagendar', consulta.id]);
+    Swal.fire({
+      title: 'Reagendar Consulta',
+      html:
+        `<input id="novaData" type="date" class="swal2-input" value="${consulta.data}">` +
+        `<input id="novaHora" type="time" class="swal2-input" value="${consulta.hora}">`,
+      showCancelButton: true,
+      confirmButtonText: 'Confirmar',
+      cancelButtonText: 'Cancelar',
+      focusConfirm: false,
+      preConfirm: () => {
+        const novaData = (
+          document.getElementById('novaData') as HTMLInputElement
+        ).value;
+        const novaHora = (
+          document.getElementById('novaHora') as HTMLInputElement
+        ).value;
+
+        if (!novaData || !novaHora) {
+          Swal.showValidationMessage('Por favor, informe data e hora.');
+          return;
+        }
+
+        return { novaData, novaHora };
+      },
+      customClass: {
+        confirmButton: 'btn btn-primary swal2-confirm-custom',
+        cancelButton: 'btn btn-outline-secondary swal2-cancel-custom',
+        popup: 'swal2-border-radius',
+      },
+      buttonsStyling: false,
+    }).then((result) => {
+      if (result.isConfirmed && result.value) {
+        // Atualiza localmente
+        consulta.data = result.value.novaData;
+        consulta.hora = result.value.novaHora;
+
+        // Chama serviço para atualizar no backend
+        this.consultaService
+          .atualizarConsulta(consulta.id!, consulta)
+          .subscribe({
+            next: (consultaAtualizada) => {
+              Swal.fire({
+                title: 'Reagendada!',
+                text: 'A consulta foi atualizada com sucesso.',
+                icon: 'success',
+                confirmButtonText: 'OK',
+                customClass: {
+                  confirmButton: 'btn btn-success swal2-confirm-custom',
+                  popup: 'swal2-border-radius',
+                },
+                buttonsStyling: false,
+              });
+            },
+            error: (err) => {
+              console.error('Erro ao atualizar consulta:', err);
+              Swal.fire({
+                title: 'Erro',
+                text: 'Não foi possível atualizar a consulta. Tente novamente.',
+                icon: 'error',
+                confirmButtonText: 'OK',
+                customClass: {
+                  confirmButton: 'btn btn-danger swal2-confirm-custom',
+                  popup: 'swal2-border-radius',
+                },
+                buttonsStyling: false,
+              });
+            },
+          });
+      }
+    });
   }
 }
