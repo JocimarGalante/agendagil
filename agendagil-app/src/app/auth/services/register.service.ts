@@ -8,7 +8,8 @@ import { Observable } from 'rxjs';
   providedIn: 'root',
 })
 export class RegisterService {
-  private readonly API_URL = 'http://localhost:5000/users'; // substitua pela sua URL real
+  //private readonly API_URL = 'http://localhost:5000/users';
+  private readonly API_URL = 'https://agendagil-api.vercel.app/users';
 
   constructor(private http: HttpClient) {}
 

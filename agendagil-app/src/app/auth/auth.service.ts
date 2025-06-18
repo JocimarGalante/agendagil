@@ -9,7 +9,8 @@ import { TipoUsuario } from '@models/tipo-usuario.enum';
   providedIn: 'root',
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:5000/users'; // JSON Server na Vercel
+  //private apiUrl = 'http://localhost:5000/users';
+  private apiUrl = 'https://agendagil-api.vercel.app/users';
 
   private currentUserSubject = new BehaviorSubject<Usuario | null>(
     JSON.parse(localStorage.getItem('usuarioLogado') || 'null')
