@@ -4,11 +4,12 @@ import { Router } from '@angular/router';
 import { AuthService } from '@auth/auth.service';
 import Swal from 'sweetalert2';
 import { Usuario } from '@models/usuario.model';
+import { TipoUsuario } from '@models/tipo-usuario.enum';
 
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
-  styleUrls: ['./login.component.scss']
+  styleUrls: ['./login.component.scss'],
 })
 export class LoginComponent {
   loginForm: FormGroup;
@@ -22,17 +23,18 @@ export class LoginComponent {
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      senha: ['', Validators.required]
+      senha: ['', Validators.required],
+      isMedico: [false],
     });
   }
 
   onSubmit() {
     if (this.loginForm.valid) {
-      const { email, senha } = this.loginForm.value;
+      const { email, senha, isMedico } = this.loginForm.value;
       this.loading = true;
       this.errorMessage = null;
 
-      this.authService.login(email, senha).subscribe({
+      this.authService.login(email, senha, isMedico).subscribe({
         next: (usuario: Usuario) => {
           this.loading = false;
 
@@ -42,11 +44,18 @@ export class LoginComponent {
             icon: 'success',
             confirmButtonColor: '#28B463',
             timer: 1500,
-            showConfirmButton: false
+            showConfirmButton: false,
           });
 
+          // Verifica o toggle manual caso o tipo não venha da API
+          let tipoUsuario = usuario.tipo;
+
+          if (!tipoUsuario) {
+            tipoUsuario = isMedico ? TipoUsuario.Medico : TipoUsuario.Paciente;
+          }
+
           // Redirecionamento com base no tipo de usuário
-          switch (usuario.tipo) {
+          switch (tipoUsuario) {
             case 'paciente':
               this.router.navigate(['/dashboard-paciente']);
               break;
@@ -61,25 +70,26 @@ export class LoginComponent {
               break;
           }
         },
-        error: err => {
+        error: (err) => {
           this.loading = false;
 
           Swal.fire({
             title: 'Erro no login',
             text: 'Email ou senha inválidos!',
             icon: 'error',
-            confirmButtonColor: '#1B4F72'
+            confirmButtonColor: '#1B4F72',
           });
 
-          this.errorMessage = err.message || 'Erro no login. Verifique seus dados.';
-        }
+          this.errorMessage =
+            err.message || 'Erro no login. Verifique seus dados.';
+        },
       });
     } else {
       Swal.fire({
         title: 'Campos inválidos',
         text: 'Preencha corretamente todos os campos.',
         icon: 'warning',
-        confirmButtonColor: '#1B4F72'
+        confirmButtonColor: '#1B4F72',
       });
     }
   }

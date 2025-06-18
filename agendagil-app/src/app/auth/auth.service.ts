@@ -3,9 +3,10 @@ import { Usuario } from './../models/usuario.model';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
+import { TipoUsuario } from '@models/tipo-usuario.enum';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthService {
   private apiUrl = 'https://agendagil-api.vercel.app/users'; // JSON Server na Vercel
@@ -27,23 +28,38 @@ export class AuthService {
     }
   }
 
-  login(email: string, senha: string): Observable<Usuario> {
-    return this.http.get<Usuario[]>(`${this.apiUrl}?email=${email}&senha=${senha}`)
+  login(email: string, senha: string, isMedico: boolean): Observable<Usuario> {
+    return this.http
+      .get<Usuario[]>(`${this.apiUrl}?email=${email}&senha=${senha}`)
       .pipe(
-        map(users => {
-          if (users.length > 0) {
-            return users[0];
-          } else {
+        map((users) => {
+          if (users.length === 0) {
             throw new Error('Email ou senha inválidos');
           }
+
+          const user = users[0];
+
+          if (isMedico && user.tipo !== TipoUsuario.Medico) {
+            throw new Error('Você não é um médico.');
+          }
+
+          if (
+            !isMedico &&
+            user.tipo !== TipoUsuario.Paciente &&
+            user.tipo !== TipoUsuario.Administrador
+          ) {
+            throw new Error('Acesso negado.');
+          }
+
+          return user;
         }),
-        tap(user => {
-          const expirationTime = new Date().getTime() + 60 * 60 * 1000; // 1 hora
+        tap((user) => {
+          const expirationTime = new Date().getTime() + 60 * 60 * 1000;
           localStorage.setItem('usuarioLogado', JSON.stringify(user));
           localStorage.setItem('tokenExpiration', expirationTime.toString());
           this.currentUserSubject.next(user);
         }),
-        catchError(err => {
+        catchError((err) => {
           return throwError(() => new Error(err.message || 'Erro no login'));
         })
       );

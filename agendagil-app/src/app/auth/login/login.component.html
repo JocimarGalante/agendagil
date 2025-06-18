@@ -1,12 +1,14 @@
-<div class="d-flex flex-column vh-100" style="background-color: #1B4F72;">
-
+<div class="d-flex flex-column vh-100" style="background-color: #1b4f72">
   <!-- Conteúdo principal centralizado -->
   <div class="d-flex justify-content-center align-items-center flex-grow-1">
-    <div class="card p-4 shadow" style="width: 350px; border-radius: 10px;">
-
+    <div class="card p-4 shadow" style="width: 350px; border-radius: 10px">
       <!-- Logo -->
       <div class="text-center mb-3">
-        <img src="./../../../assets/logo.jpg" alt="AgendAgil Logo" width="200" />
+        <img
+          src="./../../../assets/logo.jpg"
+          alt="AgendAgil Logo"
+          width="200"
+        />
       </div>
 
       <!-- Formulário -->
@@ -19,11 +21,24 @@
             class="form-control"
             placeholder="Digite seu email"
             formControlName="email"
-            [ngClass]="{'is-invalid': loginForm.get('email')?.invalid && loginForm.get('email')?.touched}"
+            [ngClass]="{
+              'is-invalid':
+                loginForm.get('email')?.invalid &&
+                loginForm.get('email')?.touched
+            }"
           />
-          <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="invalid-feedback">
-            <div *ngIf="loginForm.get('email')?.errors?.required">Email é obrigatório.</div>
-            <div *ngIf="loginForm.get('email')?.errors?.email">Digite um email válido.</div>
+          <div
+            *ngIf="
+              loginForm.get('email')?.invalid && loginForm.get('email')?.touched
+            "
+            class="invalid-feedback"
+          >
+            <div *ngIf="loginForm.get('email')?.errors?.required">
+              Email é obrigatório.
+            </div>
+            <div *ngIf="loginForm.get('email')?.errors?.email">
+              Digite um email válido.
+            </div>
           </div>
         </div>
 
@@ -35,35 +50,67 @@
             class="form-control"
             placeholder="Digite sua senha"
             formControlName="senha"
-            [ngClass]="{'is-invalid': loginForm.get('senha')?.invalid && loginForm.get('senha')?.touched}"
+            [ngClass]="{
+              'is-invalid':
+                loginForm.get('senha')?.invalid &&
+                loginForm.get('senha')?.touched
+            }"
           />
-          <div *ngIf="loginForm.get('senha')?.invalid && loginForm.get('senha')?.touched" class="invalid-feedback">
-            <div *ngIf="loginForm.get('senha')?.errors?.required">Senha é obrigatória.</div>
+          <div
+            *ngIf="
+              loginForm.get('senha')?.invalid && loginForm.get('senha')?.touched
+            "
+            class="invalid-feedback"
+          >
+            <div *ngIf="loginForm.get('senha')?.errors?.required">
+              Senha é obrigatória.
+            </div>
           </div>
+        </div>
+
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="isMedico"
+            formControlName="isMedico"
+          />
+          <label class="form-check-label" style="color: #1B4F72;" for="isMedico">
+            Sou médico?
+          </label>
         </div>
 
         <button
           type="submit"
           class="btn w-100 mb-2"
           [disabled]="loginForm.invalid"
-          style="background-color: #28B463; color: #fff;">
+          style="background-color: #28b463; color: #fff"
+        >
           Entrar
         </button>
 
         <!-- Esqueci a senha -->
         <div class="text-center mb-3">
-          <a routerLink="/esqueci-senha" class="text-decoration-none small" style="color: #28B463;">Esqueci minha senha</a>
+          <a
+            routerLink="/esqueci-senha"
+            class="text-decoration-none small"
+            style="color: #28b463"
+            >Esqueci minha senha</a
+          >
         </div>
       </form>
 
       <!-- Criar conta -->
       <div class="text-center mt-3 border-top pt-3">
         <span class="text-white d-block mb-1">Não tem uma conta?</span>
-        <a [routerLink]="['/cadastro']" class="btn btn-outline-light btn-sm px-4" style="border-color: #28B463; color: #28B463;">
+        <a
+          [routerLink]="['/cadastro']"
+          class="btn btn-outline-light btn-sm px-4"
+          style="border-color: #28b463; color: #28b463"
+        >
           Criar conta
         </a>
       </div>
-
     </div>
   </div>
   <app-footer></app-footer>
