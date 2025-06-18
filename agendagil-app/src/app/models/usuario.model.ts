@@ -6,5 +6,6 @@ export interface Usuario {
   email: string;
   senha?: string;
   tipo: TipoUsuario;
+  crm?: string;
   especialidade?: string; // apenas para médico
 }

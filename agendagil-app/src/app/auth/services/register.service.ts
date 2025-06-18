@@ -5,17 +5,18 @@ import { Usuario } from '@models/usuario.model';
 import { Observable } from 'rxjs';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class RegisterService {
-
-  private readonly API_URL = 'https://agendagil-api.vercel.app/users'; // substitua pela sua URL real
+  private readonly API_URL = 'http://localhost:5000/users'; // substitua pela sua URL real
 
   constructor(private http: HttpClient) {}
 
-  registrarUsuario(dados: Usuario): Observable<Usuario> {
-    // Força o tipo padrão como "Paciente"
-    const payload = { ...dados, tipo: TipoUsuario.Paciente };
+  registrarUsuario(dados: Usuario, isMedico: boolean): Observable<Usuario> {
+    const payload = {
+      ...dados,
+      tipo: isMedico ? TipoUsuario.Medico : TipoUsuario.Paciente,
+    };
     return this.http.post<Usuario>(this.API_URL, payload);
   }
 }

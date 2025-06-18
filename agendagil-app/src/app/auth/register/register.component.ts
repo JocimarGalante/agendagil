@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RegisterService } from '../services/register.service';
 import { TipoUsuario } from '@models/tipo-usuario.enum';
 import Swal from 'sweetalert2';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-register',
@@ -11,14 +12,17 @@ import Swal from 'sweetalert2';
 })
 export class RegisterComponent implements OnInit {
   registerForm!: FormGroup;
+
   forcaSenha = {
     texto: '',
     cor: '',
     porcentagem: '0%',
   };
+
   constructor(
     private fb: FormBuilder,
-    private registerService: RegisterService
+    private registerService: RegisterService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -26,13 +30,37 @@ export class RegisterComponent implements OnInit {
       nome: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       senha: ['', Validators.required],
-      tipo: [TipoUsuario.Paciente],
+      isMedico: [false],
+      crm: [''],
+    });
+
+    // Atualiza validators e tipo ao mudar o isMedico
+    this.registerForm.get('isMedico')?.valueChanges.subscribe((isMedico: boolean) => {
+      const crmControl = this.registerForm.get('crm');
+
+      if (isMedico) {
+        crmControl?.setValidators([Validators.required]);
+      } else {
+        crmControl?.clearValidators();
+        crmControl?.setValue(''); // limpa CRM se não for médico
+      }
+
+      crmControl?.updateValueAndValidity();
     });
   }
 
   onSubmit(): void {
     if (this.registerForm.valid) {
-      this.registerService.registrarUsuario(this.registerForm.value).subscribe({
+      const formValue = this.registerForm.value;
+      const isMedico = formValue.isMedico;
+
+      // Monta o objeto com o tipo correto
+      const usuario = {
+        ...formValue,
+        tipo: isMedico ? TipoUsuario.Medico : TipoUsuario.Paciente,
+      };
+
+      this.registerService.registrarUsuario(usuario, isMedico).subscribe({
         next: () => {
           Swal.fire({
             icon: 'success',
@@ -41,6 +69,7 @@ export class RegisterComponent implements OnInit {
             confirmButtonColor: '#28B463',
           });
           this.registerForm.reset();
+          this.router.navigate(['/login']);
         },
         error: (err) => {
           Swal.fire({
@@ -60,6 +89,7 @@ export class RegisterComponent implements OnInit {
       });
     }
   }
+
   avaliarForcaSenha(): void {
     const senha = this.registerForm.get('senha')?.value || '';
 

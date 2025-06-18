@@ -114,8 +114,43 @@
           </div>
         </div>
 
-        <!-- Tipo oculto -->
-        <input type="hidden" formControlName="tipo" />
+        <div class="form-check form-switch mb-3">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="isMedico"
+            formControlName="isMedico"
+          />
+          <label class="form-check-label" style="color: #1b4f72" for="isMedico">
+            Sou médico?
+          </label>
+        </div>
+
+        <!-- Campo CRM, aparece só se isMedico for true -->
+        <div class="mb-3" *ngIf="registerForm.get('isMedico')?.value">
+          <label for="crm" class="form-label text-white">CRM</label>
+          <input
+            type="text"
+            id="crm"
+            class="form-control"
+            placeholder="Digite seu CRM"
+            formControlName="crm"
+            [ngClass]="{
+              'is-invalid':
+                registerForm.get('crm')?.invalid &&
+                registerForm.get('crm')?.touched
+            }"
+          />
+          <div
+            *ngIf="
+              registerForm.get('crm')?.invalid &&
+              registerForm.get('crm')?.touched
+            "
+            class="invalid-feedback"
+          >
+            CRM é obrigatório para médicos.
+          </div>
+        </div>
 
         <button
           type="submit"

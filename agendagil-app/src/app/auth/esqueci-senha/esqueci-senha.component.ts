@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -10,7 +11,7 @@ import Swal from 'sweetalert2';
 export class EsqueciSenhaComponent implements OnInit {
   senhaForm!: FormGroup;
 
-  constructor(private fb: FormBuilder) {}
+  constructor(private fb: FormBuilder, private router: Router) {}
 
   ngOnInit(): void {
     this.senhaForm = this.fb.group({
@@ -31,6 +32,7 @@ export class EsqueciSenhaComponent implements OnInit {
       });
 
       this.senhaForm.reset();
+      this.router.navigate(['/login']);
     }
   }
 }
