@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { RegisterService } from '../services/register.service';
-import { TipoUsuario } from '@models/tipo-usuario.enum';
+import { TipoUsuario } from '@models/usuario/tipo-usuario.enum';
 import Swal from 'sweetalert2';
 import { Router } from '@angular/router';
 
@@ -57,7 +57,7 @@ export class RegisterComponent implements OnInit {
       // Monta o objeto com o tipo correto
       const usuario = {
         ...formValue,
-        tipo: isMedico ? TipoUsuario.Medico : TipoUsuario.Paciente,
+        tipo: isMedico ? TipoUsuario.PROFISSIONAL_AUTONOMO : TipoUsuario.PACIENTE,
       };
 
       this.registerService.registrarUsuario(usuario, isMedico).subscribe({

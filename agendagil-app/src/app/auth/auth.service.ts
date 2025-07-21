@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
-import { Usuario } from './../models/usuario.model';
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
-import { TipoUsuario } from '@models/tipo-usuario.enum';
+import { TipoUsuario } from '@models/usuario/tipo-usuario.enum';
+import { UsuarioBase } from '@models/usuario/usuario-base.model';
 
 @Injectable({
   providedIn: 'root',
@@ -12,7 +12,7 @@ export class AuthService {
   //private apiUrl = 'http://localhost:5000/users';
   private apiUrl = 'https://agendagil-api.vercel.app/users';
 
-  private currentUserSubject = new BehaviorSubject<Usuario | null>(
+  private currentUserSubject = new BehaviorSubject<UsuarioBase | null>(
     JSON.parse(localStorage.getItem('usuarioLogado') || 'null')
   );
   public currentUser$ = this.currentUserSubject.asObservable();
@@ -29,9 +29,9 @@ export class AuthService {
     }
   }
 
-  login(email: string, senha: string, isMedico: boolean): Observable<Usuario> {
+  login(email: string, senha: string, isMedico: boolean): Observable<UsuarioBase> {
     return this.http
-      .get<Usuario[]>(`${this.apiUrl}?email=${email}&senha=${senha}`)
+      .get<UsuarioBase[]>(`${this.apiUrl}?email=${email}&senha=${senha}`)
       .pipe(
         map((users) => {
           if (users.length === 0) {
@@ -40,14 +40,14 @@ export class AuthService {
 
           const user = users[0];
 
-          if (isMedico && user.tipo !== TipoUsuario.Medico) {
+          if (isMedico && user.tipo !== TipoUsuario.PROFISSIONAL_AUTONOMO) {
             throw new Error('Você não é um médico.');
           }
 
           if (
             !isMedico &&
-            user.tipo !== TipoUsuario.Paciente &&
-            user.tipo !== TipoUsuario.Administrador
+            user.tipo !== TipoUsuario.PACIENTE &&
+            user.tipo !== TipoUsuario.ADMINISTRADOR
           ) {
             throw new Error('Acesso negado.');
           }
@@ -72,7 +72,7 @@ export class AuthService {
     localStorage.removeItem('tokenExpiration');
   }
 
-  getUsuarioLogado(): Usuario | null {
+  getUsuarioLogado(): UsuarioBase | null {
     const expiration = localStorage.getItem('tokenExpiration');
     const now = new Date().getTime();
 

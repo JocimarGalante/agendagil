@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '@auth/auth.service';
-import { TipoUsuario } from '@models/tipo-usuario.enum';
-import { Usuario } from '@models/usuario.model';
+import { TipoUsuario } from '@models/usuario/tipo-usuario.enum';
+import { UsuarioBase } from '@models/usuario/usuario-base.model';
 
 @Component({
   selector: 'app-home',
@@ -9,7 +9,7 @@ import { Usuario } from '@models/usuario.model';
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnInit {
-  usuario: Usuario | null = null;
+  usuario: UsuarioBase | null = null;
   TipoUsuario = TipoUsuario;
 
   constructor(private authService: AuthService) {}

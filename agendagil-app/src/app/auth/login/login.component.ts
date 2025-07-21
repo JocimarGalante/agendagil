@@ -3,8 +3,8 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@auth/auth.service';
 import Swal from 'sweetalert2';
-import { Usuario } from '@models/usuario.model';
-import { TipoUsuario } from '@models/tipo-usuario.enum';
+import { TipoUsuario } from '@models/usuario/tipo-usuario.enum';
+import { UsuarioBase } from '@models/usuario/usuario-base.model';
 
 @Component({
   selector: 'app-login',
@@ -35,7 +35,7 @@ export class LoginComponent {
       this.errorMessage = null;
 
       this.authService.login(email, senha, isMedico).subscribe({
-        next: (usuario: Usuario) => {
+        next: (usuario: UsuarioBase) => {
           this.loading = false;
 
           Swal.fire({
@@ -51,18 +51,18 @@ export class LoginComponent {
           let tipoUsuario = usuario.tipo;
 
           if (!tipoUsuario) {
-            tipoUsuario = isMedico ? TipoUsuario.Medico : TipoUsuario.Paciente;
+            tipoUsuario = isMedico ? TipoUsuario.PROFISSIONAL_AUTONOMO : TipoUsuario.PACIENTE;
           }
 
           // Redirecionamento com base no tipo de usuário
           switch (tipoUsuario) {
-            case 'paciente':
+            case 'PACIENTE':
               this.router.navigate(['/dashboard-paciente']);
               break;
-            case 'medico':
+            case 'PROFISSIONAL_AUTONOMO':
               this.router.navigate(['/dashboard-medico']);
               break;
-            case 'administrador':
+            case 'ADMINISTRADOR':
               this.router.navigate(['/dashboard-admin']);
               break;
             default:

@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '@auth/auth.service';
-import { Usuario } from '@models/usuario.model';
+import { UsuarioBase } from '@models/usuario/usuario-base.model';
 
 @Component({
   selector: 'app-dashboard-paciente',
@@ -8,7 +8,7 @@ import { Usuario } from '@models/usuario.model';
   styleUrls: ['./dashboard-paciente.component.scss'],
 })
 export class DashboardPacienteComponent implements OnInit {
-  usuario: Usuario | null = null;
+  usuario: UsuarioBase | null = null;
   isCollapsed = false;
   isMobile = false;
 
