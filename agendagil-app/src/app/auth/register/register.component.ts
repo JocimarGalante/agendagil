@@ -78,7 +78,7 @@ export class RegisterComponent implements OnInit {
 
       // Campos para PACIENTE
       cpf: [''],
-      dataNascimento: [''],
+      //dataNascimento: [''],
       genero: [''],
 
       // Campos para PROFISSIONAL AUTÔNOMO
@@ -115,7 +115,7 @@ export class RegisterComponent implements OnInit {
     switch (tipo) {
       case TipoUsuario.PACIENTE:
         this.registerForm.get('cpf')?.setValidators([Validators.required]);
-        this.registerForm.get('dataNascimento')?.setValidators([Validators.required]);
+        //this.registerForm.get('dataNascimento')?.setValidators([Validators.required]);
         this.registerForm.get('planoSelecionado')?.clearValidators();
         break;
 
@@ -136,7 +136,7 @@ export class RegisterComponent implements OnInit {
         break;
     }
 
-    ['cpf', 'dataNascimento', 'crm', 'especialidade', 'cnpj', 'razaoSocial', 'planoSelecionado']
+    ['cpf', 'crm', 'especialidade', 'cnpj', 'razaoSocial', 'planoSelecionado']
       .forEach((campo) => {
         this.registerForm.get(campo)?.updateValueAndValidity();
       });
@@ -145,7 +145,6 @@ export class RegisterComponent implements OnInit {
   private limparValidadoresEspecificos() {
     const campos = [
       'cpf',
-      'dataNascimento',
       'crm',
       'especialidade',
       'cnpj',
