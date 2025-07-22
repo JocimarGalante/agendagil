@@ -181,6 +181,7 @@
               id="dataNascimento"
               class="form-control"
               formControlName="dataNascimento"
+              placeholder="Data Nascimento"
               max="{{ hoje }}"
               [ngClass]="{
                 'is-invalid':
@@ -202,7 +203,7 @@
           <div class="mb-3">
             <label for="genero" class="form-label text-white">Gênero</label>
             <select id="genero" class="form-select" formControlName="genero">
-              <option value="">Selecione</option>
+              <option value="">Gênero</option>
               <option value="Masculino">Masculino</option>
               <option value="Feminino">Feminino</option>
               <option value="Outro">Outro</option>
