@@ -1,9 +1,15 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
+import {
+  FormBuilder,
+  FormGroup,
+  Validators,
+  AbstractControl,
+} from '@angular/forms';
 import { RegisterService } from '../services/register.service';
 import { TipoUsuario } from '@models/usuario/tipo-usuario.enum';
 import Swal from 'sweetalert2';
 import { Router } from '@angular/router';
+import { Plano } from '@models/plano.model';
 
 interface Tipo {
   value: string;
@@ -23,8 +29,32 @@ export class RegisterComponent implements OnInit {
 
   tipos: Tipo[] = [
     { value: TipoUsuario.PACIENTE, label: 'Paciente' },
-    { value: TipoUsuario.PROFISSIONAL_AUTONOMO, label: 'Profissional Autônomo' },
+    {
+      value: TipoUsuario.PROFISSIONAL_AUTONOMO,
+      label: 'Profissional Autônomo',
+    },
     { value: TipoUsuario.CLINICA, label: 'Clínica' },
+  ];
+
+  planos: Plano[] = [
+    {
+      id: 'plano1',
+      nome: 'Plano Básico',
+      descricao: 'Anúncios simples com alcance limitado',
+      preco: 49.9,
+    },
+    {
+      id: 'plano2',
+      nome: 'Plano Profissional',
+      descricao: 'Anúncios com maior visibilidade e destaque',
+      preco: 99.9,
+    },
+    {
+      id: 'plano3',
+      nome: 'Plano Premium',
+      descricao: 'Anúncios prioritários com suporte exclusivo',
+      preco: 149.9,
+    },
   ];
 
   forcaSenha = {
@@ -45,10 +75,12 @@ export class RegisterComponent implements OnInit {
       nome: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       senha: ['', Validators.required],
+
       // Campos para PACIENTE
       cpf: [''],
       dataNascimento: [''],
       genero: [''],
+
       // Campos para PROFISSIONAL AUTÔNOMO
       crm: [''],
       especialidade: [''],
@@ -56,6 +88,7 @@ export class RegisterComponent implements OnInit {
       experiencia: [''],
       descricao: [''],
       siteProfissional: [''],
+
       // Campos para CLINICA
       cnpj: [''],
       razaoSocial: [''],
@@ -64,10 +97,12 @@ export class RegisterComponent implements OnInit {
       especialidadesAtendidas: [''],
       site: [''],
       horarioFuncionamento: [''],
-      descricaoClinica: [''], // Usar nome diferente para textarea descrição da clínica
+      descricaoClinica: [''],
+
+      // Plano selecionado
+      planoSelecionado: [''],
     });
 
-    // Escuta mudanças no campo tipo para atualizar validadores
     this.registerForm.get('tipo')?.valueChanges.subscribe((tipo: string) => {
       this.tipoUsuarioSelecionado = tipo;
       this.atualizarValidadoresPorTipo(tipo);
@@ -75,41 +110,36 @@ export class RegisterComponent implements OnInit {
   }
 
   private atualizarValidadoresPorTipo(tipo: string) {
-    // Primeiro limpar todos os validadores específicos
     this.limparValidadoresEspecificos();
 
     switch (tipo) {
       case TipoUsuario.PACIENTE:
         this.registerForm.get('cpf')?.setValidators([Validators.required]);
         this.registerForm.get('dataNascimento')?.setValidators([Validators.required]);
+        this.registerForm.get('planoSelecionado')?.clearValidators();
         break;
 
       case TipoUsuario.PROFISSIONAL_AUTONOMO:
         this.registerForm.get('cpf')?.setValidators([Validators.required]);
         this.registerForm.get('crm')?.setValidators([Validators.required]);
         this.registerForm.get('especialidade')?.setValidators([Validators.required]);
+        this.registerForm.get('planoSelecionado')?.setValidators([Validators.required]);
         break;
 
       case TipoUsuario.CLINICA:
         this.registerForm.get('cnpj')?.setValidators([Validators.required]);
         this.registerForm.get('razaoSocial')?.setValidators([Validators.required]);
+        this.registerForm.get('planoSelecionado')?.setValidators([Validators.required]);
         break;
 
       default:
         break;
     }
 
-    // Atualiza validade dos controles afetados
-    [
-      'cpf',
-      'dataNascimento',
-      'crm',
-      'especialidade',
-      'cnpj',
-      'razaoSocial',
-    ].forEach((campo) => {
-      this.registerForm.get(campo)?.updateValueAndValidity();
-    });
+    ['cpf', 'dataNascimento', 'crm', 'especialidade', 'cnpj', 'razaoSocial', 'planoSelecionado']
+      .forEach((campo) => {
+        this.registerForm.get(campo)?.updateValueAndValidity();
+      });
   }
 
   private limparValidadoresEspecificos() {
@@ -120,6 +150,7 @@ export class RegisterComponent implements OnInit {
       'especialidade',
       'cnpj',
       'razaoSocial',
+      'planoSelecionado',
     ];
     campos.forEach((campo) => {
       this.registerForm.get(campo)?.clearValidators();
@@ -146,17 +177,33 @@ export class RegisterComponent implements OnInit {
     switch (pontuacao) {
       case 0:
       case 1:
-        this.forcaSenha = { texto: 'Senha fraca', cor: '#e74c3c', porcentagem: '25%' };
+        this.forcaSenha = {
+          texto: 'Senha fraca',
+          cor: '#e74c3c',
+          porcentagem: '25%',
+        };
         break;
       case 2:
       case 3:
-        this.forcaSenha = { texto: 'Senha média', cor: '#f1c40f', porcentagem: '50%' };
+        this.forcaSenha = {
+          texto: 'Senha média',
+          cor: '#f1c40f',
+          porcentagem: '50%',
+        };
         break;
       case 4:
-        this.forcaSenha = { texto: 'Senha boa', cor: '#2ecc71', porcentagem: '75%' };
+        this.forcaSenha = {
+          texto: 'Senha boa',
+          cor: '#2ecc71',
+          porcentagem: '75%',
+        };
         break;
       case 5:
-        this.forcaSenha = { texto: 'Senha forte', cor: '#28b463', porcentagem: '100%' };
+        this.forcaSenha = {
+          texto: 'Senha forte',
+          cor: '#28b463',
+          porcentagem: '100%',
+        };
         break;
     }
   }
@@ -164,8 +211,6 @@ export class RegisterComponent implements OnInit {
   onSubmit(): void {
     if (this.registerForm.valid) {
       const formValue = this.registerForm.value;
-
-      // Monta o objeto para envio, pode remover campos não necessários se quiser
 
       this.registerService.registrarUsuario(formValue, formValue.tipo).subscribe({
         next: () => {

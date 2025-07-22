@@ -1,0 +1,8 @@
+  .plano-card {
+    border-width: 2px !important;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  .plano-card:hover {
+    border-color: #28b463 !important;
+    box-shadow: 0 0 12px #28b463aa;
+  }
