@@ -7,6 +7,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { CoreModule } from "../core/core.module";
 import { RouterModule } from '@angular/router';
 import { EsqueciSenhaComponent } from './esqueci-senha/esqueci-senha.component';
+import { NgxMaskModule } from 'ngx-mask';
 
 
 @NgModule({
@@ -20,7 +21,8 @@ import { EsqueciSenhaComponent } from './esqueci-senha/esqueci-senha.component';
     ReactiveFormsModule,
     HttpClientModule,
     CoreModule,
-    RouterModule
+    RouterModule,
+    NgxMaskModule.forRoot(),
 ],
   exports: [
     LoginComponent,

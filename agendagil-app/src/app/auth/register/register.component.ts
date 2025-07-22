@@ -1,9 +1,14 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
 import { RegisterService } from '../services/register.service';
 import { TipoUsuario } from '@models/usuario/tipo-usuario.enum';
 import Swal from 'sweetalert2';
 import { Router } from '@angular/router';
+
+interface Tipo {
+  value: string;
+  label: string;
+}
 
 @Component({
   selector: 'app-register',
@@ -12,6 +17,15 @@ import { Router } from '@angular/router';
 })
 export class RegisterComponent implements OnInit {
   registerForm!: FormGroup;
+  tipoUsuarioSelecionado: string = '';
+  tipoUsuarioEnum = TipoUsuario;
+  hoje: string = new Date().toISOString().split('T')[0];
+
+  tipos: Tipo[] = [
+    { value: TipoUsuario.PACIENTE, label: 'Paciente' },
+    { value: TipoUsuario.PROFISSIONAL_AUTONOMO, label: 'Profissional Autônomo' },
+    { value: TipoUsuario.CLINICA, label: 'Clínica' },
+  ];
 
   forcaSenha = {
     texto: '',
@@ -27,40 +41,133 @@ export class RegisterComponent implements OnInit {
 
   ngOnInit(): void {
     this.registerForm = this.fb.group({
+      tipo: ['', Validators.required],
       nome: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       senha: ['', Validators.required],
-      isMedico: [false],
+      // Campos para PACIENTE
+      cpf: [''],
+      dataNascimento: [''],
+      genero: [''],
+      // Campos para PROFISSIONAL AUTÔNOMO
       crm: [''],
+      especialidade: [''],
+      formacao: [''],
+      experiencia: [''],
+      descricao: [''],
+      siteProfissional: [''],
+      // Campos para CLINICA
+      cnpj: [''],
+      razaoSocial: [''],
+      responsavelTecnico: [''],
+      registroResponsavel: [''],
+      especialidadesAtendidas: [''],
+      site: [''],
+      horarioFuncionamento: [''],
+      descricaoClinica: [''], // Usar nome diferente para textarea descrição da clínica
     });
 
-    // Atualiza validators e tipo ao mudar o isMedico
-    this.registerForm.get('isMedico')?.valueChanges.subscribe((isMedico: boolean) => {
-      const crmControl = this.registerForm.get('crm');
-
-      if (isMedico) {
-        crmControl?.setValidators([Validators.required]);
-      } else {
-        crmControl?.clearValidators();
-        crmControl?.setValue(''); // limpa CRM se não for médico
-      }
-
-      crmControl?.updateValueAndValidity();
+    // Escuta mudanças no campo tipo para atualizar validadores
+    this.registerForm.get('tipo')?.valueChanges.subscribe((tipo: string) => {
+      this.tipoUsuarioSelecionado = tipo;
+      this.atualizarValidadoresPorTipo(tipo);
     });
+  }
+
+  private atualizarValidadoresPorTipo(tipo: string) {
+    // Primeiro limpar todos os validadores específicos
+    this.limparValidadoresEspecificos();
+
+    switch (tipo) {
+      case TipoUsuario.PACIENTE:
+        this.registerForm.get('cpf')?.setValidators([Validators.required]);
+        this.registerForm.get('dataNascimento')?.setValidators([Validators.required]);
+        break;
+
+      case TipoUsuario.PROFISSIONAL_AUTONOMO:
+        this.registerForm.get('cpf')?.setValidators([Validators.required]);
+        this.registerForm.get('crm')?.setValidators([Validators.required]);
+        this.registerForm.get('especialidade')?.setValidators([Validators.required]);
+        break;
+
+      case TipoUsuario.CLINICA:
+        this.registerForm.get('cnpj')?.setValidators([Validators.required]);
+        this.registerForm.get('razaoSocial')?.setValidators([Validators.required]);
+        break;
+
+      default:
+        break;
+    }
+
+    // Atualiza validade dos controles afetados
+    [
+      'cpf',
+      'dataNascimento',
+      'crm',
+      'especialidade',
+      'cnpj',
+      'razaoSocial',
+    ].forEach((campo) => {
+      this.registerForm.get(campo)?.updateValueAndValidity();
+    });
+  }
+
+  private limparValidadoresEspecificos() {
+    const campos = [
+      'cpf',
+      'dataNascimento',
+      'crm',
+      'especialidade',
+      'cnpj',
+      'razaoSocial',
+    ];
+    campos.forEach((campo) => {
+      this.registerForm.get(campo)?.clearValidators();
+      this.registerForm.get(campo)?.setValue('');
+      this.registerForm.get(campo)?.updateValueAndValidity();
+    });
+  }
+
+  avaliarForcaSenha(): void {
+    const senha = this.registerForm.get('senha')?.value || '';
+
+    if (!senha) {
+      this.forcaSenha = { texto: '', cor: '', porcentagem: '0%' };
+      return;
+    }
+
+    let pontuacao = 0;
+    if (senha.length >= 8) pontuacao++;
+    if (/[A-Z]/.test(senha)) pontuacao++;
+    if (/[a-z]/.test(senha)) pontuacao++;
+    if (/[0-9]/.test(senha)) pontuacao++;
+    if (/[^A-Za-z0-9]/.test(senha)) pontuacao++;
+
+    switch (pontuacao) {
+      case 0:
+      case 1:
+        this.forcaSenha = { texto: 'Senha fraca', cor: '#e74c3c', porcentagem: '25%' };
+        break;
+      case 2:
+      case 3:
+        this.forcaSenha = { texto: 'Senha média', cor: '#f1c40f', porcentagem: '50%' };
+        break;
+      case 4:
+        this.forcaSenha = { texto: 'Senha boa', cor: '#2ecc71', porcentagem: '75%' };
+        break;
+      case 5:
+        this.forcaSenha = { texto: 'Senha forte', cor: '#28b463', porcentagem: '100%' };
+        break;
+    }
   }
 
   onSubmit(): void {
     if (this.registerForm.valid) {
       const formValue = this.registerForm.value;
-      const isMedico = formValue.isMedico;
 
-      // Monta o objeto com o tipo correto
-      const usuario = {
-        ...formValue,
-        tipo: isMedico ? TipoUsuario.PROFISSIONAL_AUTONOMO : TipoUsuario.PACIENTE,
-      };
+      // Monta o objeto para envio, pode remover campos não necessários se quiser
 
-      this.registerService.registrarUsuario(usuario, isMedico).subscribe({
+      this.registerService.registrarUsuario(formValue, formValue.tipo).subscribe({
         next: () => {
           Swal.fire({
             icon: 'success',
@@ -69,6 +176,7 @@ export class RegisterComponent implements OnInit {
             confirmButtonColor: '#28B463',
           });
           this.registerForm.reset();
+          this.tipoUsuarioSelecionado = '';
           this.router.navigate(['/login']);
         },
         error: (err) => {
@@ -87,59 +195,6 @@ export class RegisterComponent implements OnInit {
         text: 'Preencha todos os campos corretamente.',
         confirmButtonColor: '#F1C40F',
       });
-    }
-  }
-
-  avaliarForcaSenha(): void {
-    const senha = this.registerForm.get('senha')?.value || '';
-
-    if (!senha) {
-      this.forcaSenha = {
-        texto: '',
-        cor: '',
-        porcentagem: '0%',
-      };
-      return;
-    }
-
-    let pontuacao = 0;
-    if (senha.length >= 8) pontuacao++;
-    if (/[A-Z]/.test(senha)) pontuacao++;
-    if (/[a-z]/.test(senha)) pontuacao++;
-    if (/[0-9]/.test(senha)) pontuacao++;
-    if (/[^A-Za-z0-9]/.test(senha)) pontuacao++;
-
-    switch (pontuacao) {
-      case 0:
-      case 1:
-        this.forcaSenha = {
-          texto: 'Senha fraca',
-          cor: '#e74c3c',
-          porcentagem: '25%',
-        };
-        break;
-      case 2:
-      case 3:
-        this.forcaSenha = {
-          texto: 'Senha média',
-          cor: '#f1c40f',
-          porcentagem: '50%',
-        };
-        break;
-      case 4:
-        this.forcaSenha = {
-          texto: 'Senha boa',
-          cor: '#2ecc71',
-          porcentagem: '75%',
-        };
-        break;
-      case 5:
-        this.forcaSenha = {
-          texto: 'Senha forte',
-          cor: '#28b463',
-          porcentagem: '100%',
-        };
-        break;
     }
   }
 }

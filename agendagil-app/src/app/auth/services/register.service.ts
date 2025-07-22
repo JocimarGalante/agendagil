@@ -13,10 +13,10 @@ export class RegisterService {
 
   constructor(private http: HttpClient) {}
 
-  registrarUsuario(dados: UsuarioBase, isMedico: boolean): Observable<UsuarioBase> {
+  registrarUsuario(dados: UsuarioBase, tipoUsuario: TipoUsuario): Observable<UsuarioBase> {
     const payload = {
       ...dados,
-      tipo: isMedico ? TipoUsuario.PROFISSIONAL_AUTONOMO : TipoUsuario.PACIENTE,
+      tipo: tipoUsuario,
     };
     return this.http.post<UsuarioBase>(this.API_URL, payload);
   }
