@@ -29,7 +29,7 @@ export class AuthService {
     }
   }
 
-  login(email: string, senha: string, isMedico: boolean): Observable<UsuarioBase> {
+  login(email: string, senha: string): Observable<UsuarioBase> {
     return this.http
       .get<UsuarioBase[]>(`${this.apiUrl}?email=${email}&senha=${senha}`)
       .pipe(
@@ -39,18 +39,6 @@ export class AuthService {
           }
 
           const user = users[0];
-
-          if (isMedico && user.tipo !== TipoUsuario.PROFISSIONAL_AUTONOMO) {
-            throw new Error('Você não é um médico.');
-          }
-
-          if (
-            !isMedico &&
-            user.tipo !== TipoUsuario.PACIENTE &&
-            user.tipo !== TipoUsuario.ADMINISTRADOR
-          ) {
-            throw new Error('Acesso negado.');
-          }
 
           return user;
         }),

@@ -3,7 +3,6 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@auth/auth.service';
 import Swal from 'sweetalert2';
-import { TipoUsuario } from '@models/usuario/tipo-usuario.enum';
 import { UsuarioBase } from '@models/usuario/usuario-base.model';
 
 @Component({
@@ -30,11 +29,11 @@ export class LoginComponent {
 
   onSubmit() {
     if (this.loginForm.valid) {
-      const { email, senha, isMedico } = this.loginForm.value;
+      const { email, senha } = this.loginForm.value;
       this.loading = true;
       this.errorMessage = null;
 
-      this.authService.login(email, senha, isMedico).subscribe({
+      this.authService.login(email, senha).subscribe({
         next: (usuario: UsuarioBase) => {
           this.loading = false;
 
@@ -49,10 +48,6 @@ export class LoginComponent {
 
           // Verifica o toggle manual caso o tipo não venha da API
           let tipoUsuario = usuario.tipo;
-
-          if (!tipoUsuario) {
-            tipoUsuario = isMedico ? TipoUsuario.PROFISSIONAL_AUTONOMO : TipoUsuario.PACIENTE;
-          }
 
           // Redirecionamento com base no tipo de usuário
           switch (tipoUsuario) {
