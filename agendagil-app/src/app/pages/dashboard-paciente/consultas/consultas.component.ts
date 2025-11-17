@@ -33,8 +33,8 @@ export class ConsultasComponent implements OnInit {
     });
   }
 
-  cancelarConsulta(id: number) {
-    const consulta = this.consultas.find((c) => c.id === id);
+  cancelarConsulta(id: string) { // MUDANÇA: number → string
+    const consulta = this.consultas.find((c) => c.id === id); // MUDANÇA: Agora funciona
     if (!consulta) return;
 
     Swal.fire({
@@ -54,10 +54,10 @@ export class ConsultasComponent implements OnInit {
       if (result.isConfirmed) {
         consulta.status = StatusConsulta.Cancelada;
 
-        this.consultaService.atualizarConsulta(id, consulta).subscribe({
+        this.consultaService.atualizarConsulta(id, consulta).subscribe({ // MUDANÇA: id é string
           next: (consultaAtualizada) => {
             // Atualiza a lista local para refletir a mudança
-            const index = this.consultas.findIndex((c) => c.id === id);
+            const index = this.consultas.findIndex((c) => c.id === id); // MUDANÇA: Agora funciona
             if (index !== -1) {
               this.consultas[index] = consultaAtualizada;
             }
@@ -132,7 +132,7 @@ export class ConsultasComponent implements OnInit {
 
         // Chama serviço para atualizar no backend
         this.consultaService
-          .atualizarConsulta(consulta.id!, consulta)
+          .atualizarConsulta(consulta.id!, consulta) // MUDANÇA: id é string
           .subscribe({
             next: (consultaAtualizada) => {
               Swal.fire({
@@ -164,5 +164,37 @@ export class ConsultasComponent implements OnInit {
           });
       }
     });
+  }
+
+  // Método auxiliar para obter classe CSS baseada no status
+  getStatusClass(status: number): string {
+    switch (status) {
+      case StatusConsulta.Agendada:
+        return 'status-agendada';
+      case StatusConsulta.Confirmada:
+        return 'status-confirmada';
+      case StatusConsulta.Cancelada:
+        return 'status-cancelada';
+      case StatusConsulta.Concluida:
+        return 'status-realizada';
+      default:
+        return 'status-desconhecida';
+    }
+  }
+
+  // Método auxiliar para obter texto do status
+  getStatusText(status: number): string {
+    switch (status) {
+      case StatusConsulta.Agendada:
+        return 'Agendada';
+      case StatusConsulta.Confirmada:
+        return 'Confirmada';
+      case StatusConsulta.Cancelada:
+        return 'Cancelada';
+      case StatusConsulta.Concluida:
+        return 'Realizada';
+      default:
+        return 'Desconhecido';
+    }
   }
 }

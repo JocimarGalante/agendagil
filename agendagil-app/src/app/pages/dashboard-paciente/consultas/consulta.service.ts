@@ -1,34 +1,99 @@
-import { HttpClient } from '@angular/common/http';
+// src/app/consultas/consulta.service.ts
 import { Injectable } from '@angular/core';
+import { Observable, from } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import { Consulta } from '@models/consulta.model';
-import { Observable } from 'rxjs';
+import { SupabaseService } from 'core/services/supabase.service';
+import { ModelConverter } from 'core/helpers/model-converters';
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: 'root'
 })
 export class ConsultaService {
-  //private readonly API_URL = 'http://localhost:5000/consultas';
-  private readonly API_URL = 'https://agendagil-api.vercel.app/consultas';
-
-  constructor(private http: HttpClient) {}
+  constructor(private supabaseService: SupabaseService) {}
 
   getConsultas(): Observable<Consulta[]> {
-    return this.http.get<Consulta[]>(this.API_URL);
+    return from(
+      this.supabaseService.getClient()
+        .from('consultas')
+        .select('*')
+        .order('data', { ascending: true })
+        .order('hora', { ascending: true })
+    ).pipe(
+      map((result: any) => {
+        if (result.error) throw result.error;
+        return result.data.map((consulta: any) =>
+          ModelConverter.fromSupabaseConsulta(consulta)
+        );
+      }),
+      catchError((error: any) => {
+        console.error('Erro ao buscar consultas:', error);
+        throw error;
+      })
+    );
   }
 
   getConsultaPorId(id: number): Observable<Consulta> {
-    return this.http.get<Consulta>(`${this.API_URL}/${id}`);
+    return from(
+      this.supabaseService.getClient()
+        .from('consultas')
+        .select('*')
+        .eq('id', id.toString())
+        .single()
+    ).pipe(
+      map((result: any) => {
+        if (result.error) throw result.error;
+        return ModelConverter.fromSupabaseConsulta(result.data);
+      })
+    );
   }
 
   criarConsulta(consulta: Consulta): Observable<Consulta> {
-    return this.http.post<Consulta>(this.API_URL, consulta);
+    const consultaSupabase = ModelConverter.toSupabaseConsulta(consulta);
+
+    return from(
+      this.supabaseService.getClient()
+        .from('consultas')
+        .insert([consultaSupabase])
+        .select()
+        .single()
+    ).pipe(
+      map((result: any) => {
+        if (result.error) throw result.error;
+        return ModelConverter.fromSupabaseConsulta(result.data);
+      })
+    );
   }
 
-  atualizarConsulta(id: number, consulta: Consulta): Observable<Consulta> {
-    return this.http.put<Consulta>(`${this.API_URL}/${id}`, consulta);
+  atualizarConsulta(id: string, consulta: Consulta): Observable<Consulta> {
+    const consultaSupabase = ModelConverter.toSupabaseConsulta(consulta);
+
+    return from(
+      this.supabaseService.getClient()
+        .from('consultas')
+        .update(consultaSupabase)
+        .eq('id', id.toString())
+        .select()
+        .single()
+    ).pipe(
+      map((result: any) => {
+        if (result.error) throw result.error;
+        return ModelConverter.fromSupabaseConsulta(result.data);
+      })
+    );
   }
 
-  deletarConsulta(id: number): Observable<any> {
-    return this.http.delete(`${this.API_URL}/${id}`);
+  deletarConsulta(id: number): Observable<void> {
+    return from(
+      this.supabaseService.getClient()
+        .from('consultas')
+        .delete()
+        .eq('id', id.toString())
+    ).pipe(
+      map((result: any) => {
+        if (result.error) throw result.error;
+        return;
+      })
+    );
   }
 }

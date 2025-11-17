@@ -1,3 +1,4 @@
+// scheduling/agenda-form/agenda-form.component.ts
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -16,7 +17,6 @@ import Swal from 'sweetalert2';
 export class AgendaFormComponent implements OnInit {
   agendamentoForm: FormGroup;
   especialidades: Especialidade[] = [];
-  medicos: Medico[] = [];
   medicosFiltrados: Medico[] = [];
   horariosDisponiveis: string[] = [];
   usuario: UsuarioBase | null = null;
@@ -25,7 +25,7 @@ export class AgendaFormComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
-    private agendamentoService: SchedulingService,
+    private schedulingService: SchedulingService,
     private authService: AuthService,
     private router: Router
   ) {
@@ -36,6 +36,15 @@ export class AgendaFormComponent implements OnInit {
     this.usuario = this.authService.getUsuarioLogado();
     this.carregarEspecialidades();
     this.observarMudancasForm();
+
+    // Debug inicial
+    this.debugDados();
+  }
+
+  debugDados(): void {
+    console.log('=== INICIANDO DEBUG ===');
+    this.schedulingService.debugEspecialidades().subscribe();
+    this.schedulingService.debugMedicos().subscribe();
   }
 
   criarForm(): FormGroup {
@@ -48,55 +57,58 @@ export class AgendaFormComponent implements OnInit {
   }
 
   carregarEspecialidades(): void {
-    this.agendamentoService.getEspecialidades().subscribe({
+    this.schedulingService.getEspecialidades().subscribe({
       next: (especialidades) => {
         this.especialidades = especialidades;
+        console.log(
+          'Especialidades carregadas no componente:',
+          this.especialidades
+        );
       },
       error: (erro) => {
         console.error('Erro ao carregar especialidades', erro);
-        this.mostrarErro('Não foi possível carregar as especialidades');
+        Swal.fire(
+          'Erro',
+          'Não foi possível carregar as especialidades',
+          'error'
+        );
       },
     });
   }
 
-  carregarMedicos(especialidadeId: number): void {
+  carregarMedicos(especialidadeId: string): void {
+    // Mudar para string
+    console.log('Carregando médicos para especialidade UUID:', especialidadeId);
     this.carregandoMedicos = true;
-    this.agendamentoService
+    this.medicosFiltrados = [];
+
+    this.schedulingService
       .getMedicosPorEspecialidade(especialidadeId)
       .subscribe({
         next: (medicos) => {
           this.medicosFiltrados = medicos;
           this.carregandoMedicos = false;
           this.agendamentoForm.patchValue({ medicoId: '' });
+          console.log(
+            'Médicos carregados no componente:',
+            this.medicosFiltrados
+          );
         },
         error: (erro) => {
           console.error('Erro ao carregar médicos', erro);
           this.carregandoMedicos = false;
-          this.mostrarErro('Não foi possível carregar os médicos');
+          this.medicosFiltrados = [];
+          Swal.fire('Erro', 'Não foi possível carregar os médicos', 'error');
         },
       });
   }
 
-  carregarHorarios(medicoId: number, data: string): void {
-    this.carregandoHorarios = true;
-    this.agendamentoService.getHorariosDisponiveis(medicoId, data).subscribe({
-      next: (horarios) => {
-        this.horariosDisponiveis = horarios;
-        this.carregandoHorarios = false;
-        this.agendamentoForm.patchValue({ hora: '' });
-      },
-      error: (erro) => {
-        console.error('Erro ao carregar horários', erro);
-        this.carregandoHorarios = false;
-        this.horariosDisponiveis = [];
-      },
-    });
-  }
-
   observarMudancasForm(): void {
+    // Observar mudanças na especialidade
     this.agendamentoForm
       .get('especialidadeId')
       ?.valueChanges.subscribe((especialidadeId) => {
+        console.log('Especialidade alterada (UUID):', especialidadeId);
         if (especialidadeId) {
           this.carregarMedicos(especialidadeId);
         } else {
@@ -105,6 +117,7 @@ export class AgendaFormComponent implements OnInit {
         }
       });
 
+    // Observar mudanças no médico e data para carregar horários
     this.agendamentoForm.get('medicoId')?.valueChanges.subscribe((medicoId) => {
       const data = this.agendamentoForm.get('data')?.value;
       if (medicoId && data) {
@@ -117,6 +130,31 @@ export class AgendaFormComponent implements OnInit {
       if (medicoId && data) {
         this.carregarHorarios(medicoId, data);
       }
+    });
+  }
+
+  carregarHorarios(medicoId: string, data: string): void {
+    // Mudar para string
+    this.carregandoHorarios = true;
+    this.schedulingService.getHorariosDisponiveis(medicoId, data).subscribe({
+      next: (horarios) => {
+        this.horariosDisponiveis = horarios;
+        this.carregandoHorarios = false;
+        this.agendamentoForm.patchValue({ hora: '' });
+
+        if (horarios.length === 0) {
+          Swal.fire(
+            'Info',
+            'Não há horários disponíveis para esta data.',
+            'info'
+          );
+        }
+      },
+      error: (erro) => {
+        console.error('Erro ao carregar horários', erro);
+        this.carregandoHorarios = false;
+        this.horariosDisponiveis = [];
+      },
     });
   }
 
@@ -133,41 +171,20 @@ export class AgendaFormComponent implements OnInit {
     return null;
   }
 
-  // scheduling/agenda-form/agenda-form.component.ts
-
   getMedicoSelecionado(): Medico | undefined {
     const medicoId = this.agendamentoForm.get('medicoId')?.value;
-    console.log('Buscando médico com ID:', medicoId, 'Tipo:', typeof medicoId);
+    console.log('Buscando médico com UUID:', medicoId);
 
     if (!medicoId) return undefined;
 
-    // Converte o ID do form para número para comparar com os IDs dos médicos
-    const medicoIdNumber = Number(medicoId);
-    const medico = this.medicosFiltrados.find((m) => m.id === medicoIdNumber);
-
+    const medico = this.medicosFiltrados.find((m) => m.id === medicoId);
     console.log('Médico encontrado:', medico);
     return medico;
   }
 
   getEspecialidadeSelecionada(): Especialidade | undefined {
     const especialidadeId = this.agendamentoForm.get('especialidadeId')?.value;
-    console.log(
-      'Buscando especialidade com ID:',
-      especialidadeId,
-      'Tipo:',
-      typeof especialidadeId
-    );
-
-    if (!especialidadeId) return undefined;
-
-    // Converte o ID do form para número para comparar com os IDs das especialidades
-    const especialidadeIdNumber = Number(especialidadeId);
-    const especialidade = this.especialidades.find(
-      (e) => e.id === especialidadeIdNumber
-    );
-
-    console.log('Especialidade encontrada:', especialidade);
-    return especialidade;
+    return this.especialidades.find((e) => e.id === especialidadeId);
   }
 
   getDataMinima(): string {
@@ -184,21 +201,10 @@ export class AgendaFormComponent implements OnInit {
     );
   }
 
-  getErroData(): string {
-    const dataControl = this.agendamentoForm.get('data');
-    if (dataControl?.errors?.['required']) {
-      return 'Por favor, selecione uma data.';
-    }
-    if (dataControl?.errors?.['dataInvalida']) {
-      return 'A data não pode ser anterior ao dia de hoje.';
-    }
-    return '';
-  }
-
   onSubmit(): void {
+    console.log('=== INICIANDO SUBMIT ===');
     console.log('Form Value:', this.agendamentoForm.value);
-    console.log('Form Valid:', this.agendamentoForm.valid);
-    console.log('Usuário:', this.usuario);
+
     if (this.agendamentoForm.valid && this.usuario) {
       const formValue = this.agendamentoForm.value;
       const medico = this.getMedicoSelecionado();
@@ -206,32 +212,30 @@ export class AgendaFormComponent implements OnInit {
 
       console.log('Médico selecionado:', medico);
       console.log('Especialidade selecionada:', especialidade);
-      console.log('Médico ID do form:', formValue.medicoId);
-      console.log('Especialidade ID do form:', formValue.especialidadeId);
-      console.log('Médicos filtrados:', this.medicosFiltrados);
-      console.log('Especialidades:', this.especialidades);
 
       if (!medico || !especialidade) {
-        this.mostrarErro('Dados incompletos para o agendamento');
+        Swal.fire('Erro', 'Dados incompletos para o agendamento.', 'error');
         return;
       }
 
       const agendamento: Agendamento = {
         paciente: this.usuario.nome,
-        pacienteId: this.usuario.id,
+        pacienteId: this.usuario.id.toString(), // Converter para string se necessário
         medico: medico.nome,
-        medicoId: medico.id,
+        medicoId: medico.id, // UUID
         especialidade: especialidade.nome,
-        especialidadeId: especialidade.id,
+        especialidadeId: especialidade.id, // UUID
         local: medico.local,
         data: formValue.data,
         hora: formValue.hora,
         status: StatusConsulta.Agendada,
       };
 
+      console.log('Agendamento a ser criado:', agendamento);
       this.confirmarAgendamento(agendamento);
     } else {
       this.marcarCamposComoSujos();
+      Swal.fire('Atenção', 'Preencha todos os campos obrigatórios.', 'warning');
     }
   }
 
@@ -256,8 +260,8 @@ export class AgendaFormComponent implements OnInit {
       cancelButtonText: 'Cancelar',
     }).then((result) => {
       if (result.isConfirmed) {
-        this.agendamentoService.criarAgendamento(agendamento).subscribe({
-          next: () => {
+        this.schedulingService.criarAgendamento(agendamento).subscribe({
+          next: (agendamentoCriado) => {
             Swal.fire({
               title: 'Agendamento Confirmado!',
               text: 'Sua consulta foi agendada com sucesso.',
@@ -269,8 +273,10 @@ export class AgendaFormComponent implements OnInit {
           },
           error: (erro) => {
             console.error('Erro ao criar agendamento', erro);
-            this.mostrarErro(
-              'Não foi possível agendar a consulta. Tente novamente.'
+            Swal.fire(
+              'Erro',
+              'Não foi possível agendar a consulta. Tente novamente.',
+              'error'
             );
           },
         });
@@ -286,11 +292,19 @@ export class AgendaFormComponent implements OnInit {
     });
   }
 
-  private mostrarErro(mensagem: string): void {
-    Swal.fire('Erro', mensagem, 'error');
-  }
-
   formatarDataExibicao(data: string): string {
     return new Date(data).toLocaleDateString('pt-BR');
+  }
+
+  // No agenda-form.component.ts, adicione este método:
+  getErroData(): string {
+    const dataControl = this.agendamentoForm.get('data');
+    if (dataControl?.errors?.['required']) {
+      return 'Por favor, selecione uma data.';
+    }
+    if (dataControl?.errors?.['dataInvalida']) {
+      return 'A data não pode ser anterior ao dia de hoje.';
+    }
+    return '';
   }
 }

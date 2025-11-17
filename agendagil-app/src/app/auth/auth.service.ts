@@ -1,63 +1,108 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, throwError } from 'rxjs';
-import { map, catchError, tap } from 'rxjs/operators';
-import { TipoUsuario } from '@models/usuario/tipo-usuario.enum';
+import { Router } from '@angular/router';
+import { BehaviorSubject, Observable, from, throwError } from 'rxjs';
+import { map, catchError, switchMap } from 'rxjs/operators';
+import { SupabaseService } from '../core/services/supabase.service';
 import { UsuarioBase } from '@models/usuario/usuario-base.model';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  //private apiUrl = 'http://localhost:5000/users';
-  private apiUrl = 'https://agendagil-api.vercel.app/users';
-
   private currentUserSubject = new BehaviorSubject<UsuarioBase | null>(
     JSON.parse(localStorage.getItem('usuarioLogado') || 'null')
   );
   public currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(private http: HttpClient) {
-    const usuario = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
-    const expiration = localStorage.getItem('tokenExpiration');
-    const now = new Date().getTime();
+  constructor(
+    private supabaseService: SupabaseService,
+    private router: Router
+  ) {
+    this.carregarUsuario();
+  }
 
-    if (usuario && expiration && now < parseInt(expiration)) {
-      this.currentUserSubject.next(usuario);
-    } else {
-      this.logout();
+  private async carregarUsuario() {
+    try {
+      // Correção: Na versão 1.35.7, session() retorna diretamente a session
+      const session = await this.supabaseService.getClient().auth.session();
+
+      if (session?.user) {
+        const usuario = await this.buscarUsuarioPorId(session.user.id);
+        if (usuario) {
+          this.currentUserSubject.next(usuario);
+          localStorage.setItem('usuarioLogado', JSON.stringify(usuario));
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar usuário:', error);
     }
   }
 
   login(email: string, senha: string): Observable<UsuarioBase> {
-    return this.http
-      .get<UsuarioBase[]>(`${this.apiUrl}?email=${email}&senha=${senha}`)
-      .pipe(
-        map((users) => {
-          if (users.length === 0) {
-            throw new Error('Email ou senha inválidos');
-          }
+    // Correção: Convertendo a Promise diretamente para Observable
+    const loginPromise = this.supabaseService.getClient().auth.signIn({
+      email,
+      password: senha
+    });
 
-          const user = users[0];
+    return from(loginPromise).pipe(
+      switchMap((result: any) => {
+        console.log('Resultado do login Supabase:', result);
 
-          return user;
-        }),
-        tap((user) => {
-          const expirationTime = new Date().getTime() + 60 * 60 * 1000;
-          localStorage.setItem('usuarioLogado', JSON.stringify(user));
-          localStorage.setItem('tokenExpiration', expirationTime.toString());
-          this.currentUserSubject.next(user);
-        }),
-        catchError((err) => {
-          return throwError(() => new Error(err.message || 'Erro no login'));
-        })
-      );
+        if (result.error) {
+          throw new Error(this.tratarErroLogin(result.error));
+        }
+
+        if (result.user) {
+          return from(this.buscarUsuarioPorId(result.user.id));
+        }
+        throw new Error('Erro ao fazer login - usuário não retornado');
+      }),
+      map((usuario: UsuarioBase | null) => {
+        if (!usuario) {
+          throw new Error('Perfil de usuário não encontrado na base de dados');
+        }
+
+        const expirationTime = new Date().getTime() + 60 * 60 * 1000;
+        localStorage.setItem('usuarioLogado', JSON.stringify(usuario));
+        localStorage.setItem('tokenExpiration', expirationTime.toString());
+        this.currentUserSubject.next(usuario);
+
+        console.log('Login realizado com sucesso:', usuario);
+        return usuario;
+      }),
+      catchError((error: any) => {
+        console.error('Erro completo no login:', error);
+        // Correção: throwError importado corretamente
+        return throwError(() => new Error(error.message || 'Erro desconhecido no login'));
+      })
+    );
+  }
+
+  private tratarErroLogin(error: any): string {
+    console.log('Erro do Supabase Auth:', error);
+
+    if (error.message?.includes('Invalid login credentials')) {
+      return 'Email ou senha inválidos';
+    }
+    if (error.message?.includes('Email not confirmed')) {
+      return 'Email não confirmado. Verifique sua caixa de entrada.';
+    }
+    if (error.message?.includes('Too many requests')) {
+      return 'Muitas tentativas de login. Tente novamente em alguns minutos.';
+    }
+    if (error.message?.includes('User not found')) {
+      return 'Usuário não encontrado. Verifique o email digitado.';
+    }
+    return error.message || 'Erro ao fazer login. Tente novamente.';
   }
 
   logout(): void {
+    this.supabaseService.getClient().auth.signOut();
     this.currentUserSubject.next(null);
     localStorage.removeItem('usuarioLogado');
     localStorage.removeItem('tokenExpiration');
+    this.router.navigate(['/login']);
   }
 
   getUsuarioLogado(): UsuarioBase | null {
@@ -65,7 +110,7 @@ export class AuthService {
     const now = new Date().getTime();
 
     if (expiration && now > parseInt(expiration)) {
-      this.logout(); // expira
+      this.logout();
       return null;
     }
 
@@ -74,5 +119,127 @@ export class AuthService {
 
   isLogado(): boolean {
     return !!this.currentUserSubject.value;
+  }
+
+  private async buscarUsuarioPorId(id: string): Promise<UsuarioBase | null> {
+    try {
+      console.log('Buscando usuário com ID:', id);
+
+      const { data, error } = await this.supabaseService.getClient()
+        .from('usuarios')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Erro ao buscar usuário no Supabase:', error);
+        return null;
+      }
+
+      if (!data) {
+        console.error('Usuário não encontrado na tabela usuarios');
+        return null;
+      }
+
+      console.log('Usuário encontrado:', data);
+      return this.fromSupabaseUsuario(data);
+    } catch (error) {
+      console.error('Erro ao buscar usuário:', error);
+      return null;
+    }
+  }
+
+  // Método para debug - verificar todos os usuários
+  async debugUsuarios(): Promise<void> {
+    try {
+      const { data, error } = await this.supabaseService.getClient()
+        .from('usuarios')
+        .select('*');
+
+      if (error) {
+        console.error('Erro ao buscar usuários:', error);
+        return;
+      }
+
+      console.log('Todos os usuários na tabela:', data);
+    } catch (error) {
+      console.error('Erro no debug:', error);
+    }
+  }
+
+  // Método para verificar sessão atual
+  async verificarSessao(): Promise<void> {
+    try {
+      const session = await this.supabaseService.getClient().auth.session();
+      console.log('Sessão atual:', session);
+      console.log('Usuário na sessão:', session?.user);
+    } catch (error) {
+      console.error('Erro ao verificar sessão:', error);
+    }
+  }
+
+  private fromSupabaseUsuario(usuario: any): UsuarioBase {
+    if (!usuario) return null as any;
+
+    const base: any = {
+      id: this.parseId(usuario.id),
+      nome: usuario.nome,
+      email: usuario.email,
+      tipo: usuario.tipo,
+      telefone: usuario.telefone,
+      fotoPerfilUrl: usuario.foto_perfil_url,
+      criadoEm: usuario.criado_em,
+      atualizadoEm: usuario.atualizado_em,
+      status: usuario.status,
+      endereco: usuario.endereco,
+      cidade: usuario.cidade,
+      estado: usuario.estado,
+      cep: usuario.cep
+    };
+
+    // Adiciona campos específicos baseados no tipo
+    switch (usuario.tipo) {
+      case 'PACIENTE':
+        base.cpf = usuario.cpf;
+        base.dataNascimento = usuario.data_nascimento;
+        base.genero = usuario.genero;
+        break;
+
+      case 'PROFISSIONAL_AUTONOMO':
+        base.crm = usuario.crm;
+        base.especialidade = usuario.especialidade;
+        base.cpf = usuario.cpf;
+        base.descricao = usuario.descricao;
+        base.formacao = usuario.formacao;
+        base.experiencia = usuario.experiencia;
+        base.siteProfissional = usuario.site_profissional;
+        break;
+
+      case 'CLINICA':
+        base.cnpj = usuario.cnpj;
+        base.razaoSocial = usuario.razao_social;
+        base.responsavelTecnico = usuario.responsavel_tecnico;
+        base.registroResponsavel = usuario.registro_responsavel;
+        base.especialidadesAtendidas = usuario.especialidades_atendidas;
+        base.site = usuario.site;
+        base.descricao = usuario.descricao;
+        base.horarioFuncionamento = usuario.horario_funcionamento;
+        break;
+    }
+
+    return base as UsuarioBase;
+  }
+
+  private parseId(id: string): number {
+    if (!id) return 0;
+    if (!isNaN(Number(id))) return Number(id);
+
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) {
+      const char = id.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
   }
 }

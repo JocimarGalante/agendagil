@@ -2,192 +2,205 @@
   class="d-flex flex-column justify-content-between min-vh-100"
   style="background-color: #1b4f72"
 >
-  <div class="d-flex justify-content-center align-items-center flex-grow-1">
+  <div class="d-flex justify-content-center align-items-center flex-grow-1 py-4">
     <div
       class="card p-4 shadow"
-      style="width: 350px; max-width: 400px; border-radius: 10px"
+      style="width: 100%; max-width: 500px; border-radius: 10px"
     >
       <!-- Logo -->
-      <div class="text-center mb-3">
+      <div class="text-center mb-4">
         <img src="../../../assets/logo.jpg" alt="AgendAgil Logo" width="200" />
+        <h4 class="text-main mt-2">Criar Conta</h4>
       </div>
 
       <!-- Formulário de Registro -->
       <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
         <!-- Tipo de Usuário -->
-        <div>
-          <label for="tipo" class="form-label text-white"
-            >Tipo de Usuário</label
+        <div class="mb-3">
+          <label for="tipo" class="form-label fw-semibold"
+            >Tipo de Usuário *</label
           >
           <select
             id="tipo"
             class="form-select"
             formControlName="tipo"
-            [ngClass]="{
-              'is-invalid':
-                registerForm.get('tipo')?.invalid &&
-                registerForm.get('tipo')?.touched
-            }"
+            [class.is-invalid]="campoInvalido('tipo')"
           >
             <option value="" disabled>Selecione o perfil</option>
             <option *ngFor="let tipo of tipos" [value]="tipo.value">
               {{ tipo.label }}
             </option>
           </select>
-          <div
-            *ngIf="
-              registerForm.get('tipo')?.invalid &&
-              registerForm.get('tipo')?.touched
-            "
-            class="invalid-feedback"
-          >
-            Tipo de usuário é obrigatório.
+          <div class="invalid-feedback" *ngIf="campoInvalido('tipo')">
+            {{ getMensagemErro('tipo') }}
           </div>
         </div>
 
         <!-- Nome Completo -->
-        <div>
-          <label for="nome" class="form-label text-white">Nome completo</label>
+        <div class="mb-3">
+          <label for="nome" class="form-label fw-semibold">Nome completo *</label>
           <input
             type="text"
             id="nome"
             class="form-control"
             placeholder="Digite seu nome completo"
             formControlName="nome"
-            [ngClass]="{
-              'is-invalid':
-                registerForm.get('nome')?.invalid &&
-                registerForm.get('nome')?.touched
-            }"
+            [class.is-invalid]="campoInvalido('nome')"
           />
-          <div
-            *ngIf="
-              registerForm.get('nome')?.invalid &&
-              registerForm.get('nome')?.touched
-            "
-            class="invalid-feedback"
-          >
-            Nome é obrigatório.
+          <div class="invalid-feedback" *ngIf="campoInvalido('nome')">
+            {{ getMensagemErro('nome') }}
           </div>
         </div>
 
         <!-- Email -->
-        <div>
-          <label for="email" class="form-label text-white">Email</label>
+        <div class="mb-3">
+          <label for="email" class="form-label fw-semibold">Email *</label>
           <input
             type="email"
             id="email"
             class="form-control"
             placeholder="Digite seu email"
             formControlName="email"
-            [ngClass]="{
-              'is-invalid':
-                registerForm.get('email')?.invalid &&
-                registerForm.get('email')?.touched
-            }"
+            [class.is-invalid]="campoInvalido('email')"
           />
-          <div
-            *ngIf="
-              registerForm.get('email')?.invalid &&
-              registerForm.get('email')?.touched
-            "
-            class="invalid-feedback"
-          >
-            <div *ngIf="registerForm.get('email')?.errors?.required">
-              Email é obrigatório.
-            </div>
-            <div *ngIf="registerForm.get('email')?.errors?.email">
-              Digite um email válido.
-            </div>
+          <div class="invalid-feedback" *ngIf="campoInvalido('email')">
+            {{ getMensagemErro('email') }}
           </div>
         </div>
 
         <!-- Senha -->
-        <div>
-          <label for="senha" class="form-label text-white">Senha</label>
+        <div class="mb-3">
+          <label for="senha" class="form-label fw-semibold">Senha *</label>
           <input
             type="password"
             id="senha"
             class="form-control"
-            placeholder="Digite sua senha"
+            placeholder="Digite sua senha (mínimo 6 caracteres)"
             formControlName="senha"
-            [ngClass]="{
-              'is-invalid':
-                registerForm.get('senha')?.invalid &&
-                registerForm.get('senha')?.touched
-            }"
+            [class.is-invalid]="campoInvalido('senha')"
           />
-          <div
-            *ngIf="
-              registerForm.get('senha')?.invalid &&
-              registerForm.get('senha')?.touched
-            "
-            class="invalid-feedback"
-          >
-            Senha é obrigatória.
+          <div class="invalid-feedback" *ngIf="campoInvalido('senha')">
+            {{ getMensagemErro('senha') }}
+          </div>
+
+          <!-- Indicador de força da senha -->
+          <div *ngIf="registerForm.get('senha')?.value" class="mt-2">
+            <div class="progress" style="height: 6px;">
+              <div
+                class="progress-bar"
+                [style.width]="forcaSenha.porcentagem"
+                [style.background-color]="forcaSenha.cor">
+              </div>
+            </div>
+            <small [style.color]="forcaSenha.cor" class="fw-semibold">
+              {{ forcaSenha.texto }}
+            </small>
           </div>
         </div>
 
-        <!-- Campos adicionais baseados no tipo de usuário -->
-        <!-- PACIENTE -->
-        <div *ngIf="tipoUsuarioSelecionado === tipoUsuarioEnum.PACIENTE">
-          <div>
-            <label for="cpf" class="form-label text-white">CPF</label>
+        <!-- Campos de contato (opcionais para todos) -->
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="telefone" class="form-label">Telefone</label>
+            <input
+              type="tel"
+              id="telefone"
+              class="form-control"
+              placeholder="(00) 00000-0000"
+              formControlName="telefone"
+            />
+          </div>
+          <div class="col-md-6">
+            <label for="cep" class="form-label">CEP</label>
             <input
               type="text"
-              id="cpf"
+              id="cep"
               class="form-control"
-              placeholder="Digite seu CPF"
-              formControlName="cpf"
-              mask="000.000.000-00"
-              [ngClass]="{
-                'is-invalid':
-                  registerForm.get('cpf')?.invalid &&
-                  registerForm.get('cpf')?.touched
-              }"
+              placeholder="00000-000"
+              formControlName="cep"
             />
-            <div
-              *ngIf="
-                registerForm.get('cpf')?.invalid &&
-                registerForm.get('cpf')?.touched
-              "
-              class="invalid-feedback"
-            >
-              CPF é obrigatório.
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-8">
+            <label for="endereco" class="form-label">Endereço</label>
+            <input
+              type="text"
+              id="endereco"
+              class="form-control"
+              placeholder="Digite seu endereço"
+              formControlName="endereco"
+            />
+          </div>
+          <div class="col-md-4">
+            <label for="estado" class="form-label">Estado</label>
+            <input
+              type="text"
+              id="estado"
+              class="form-control"
+              placeholder="UF"
+              formControlName="estado"
+            />
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label for="cidade" class="form-label">Cidade</label>
+          <input
+            type="text"
+            id="cidade"
+            class="form-control"
+            placeholder="Digite sua cidade"
+            formControlName="cidade"
+          />
+        </div>
+
+        <!-- Campos adicionais baseados no tipo de usuário -->
+
+        <!-- PACIENTE -->
+        <div *ngIf="tipoUsuarioSelecionado === tipoUsuarioEnum.PACIENTE" class="border-top pt-3">
+          <h6 class="text-main mb-3">Dados do Paciente</h6>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="cpf" class="form-label fw-semibold">CPF *</label>
+              <input
+                type="text"
+                id="cpf"
+                class="form-control"
+                placeholder="Digite seu CPF"
+                formControlName="cpf"
+                mask="000.000.000-00"
+                [class.is-invalid]="campoInvalido('cpf')"
+              />
+              <div class="invalid-feedback" *ngIf="campoInvalido('cpf')">
+                {{ getMensagemErro('cpf') }}
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label for="dataNascimento" class="form-label fw-semibold"
+                >Data de Nascimento *</label
+              >
+              <input
+                type="date"
+                id="dataNascimento"
+                class="form-control"
+                formControlName="dataNascimento"
+                max="{{ hoje }}"
+                [class.is-invalid]="campoInvalido('dataNascimento')"
+              />
+              <div class="invalid-feedback" *ngIf="campoInvalido('dataNascimento')">
+                {{ getMensagemErro('dataNascimento') }}
+              </div>
             </div>
           </div>
 
-         <!-- <div>
-            <label for="dataNascimento" class="form-label text-white"
-              >Data de Nascimento</label
-            >
-            <input
-              type="date"
-              id="dataNascimento"
-              class="form-control"
-              formControlName="dataNascimento"
-              max="{{ hoje }}"
-              [ngClass]="{
-                'is-invalid':
-                  registerForm.get('dataNascimento')?.invalid &&
-                  registerForm.get('dataNascimento')?.touched
-              }"
-            />
-            <div
-              *ngIf="
-                registerForm.get('dataNascimento')?.invalid &&
-                registerForm.get('dataNascimento')?.touched
-              "
-              class="invalid-feedback"
-            >
-              Data de nascimento é obrigatória e deve ser válida.
-            </div>
-          </div>-->
-
-          <div class="mb-4">
-            <label for="genero" class="form-label text-white">Gênero</label>
+          <div class="mb-3">
+            <label for="genero" class="form-label">Gênero</label>
             <select id="genero" class="form-select" formControlName="genero">
-              <option value="">Gênero</option>
+              <option value="">Selecione o gênero</option>
               <option value="Masculino">Masculino</option>
               <option value="Feminino">Feminino</option>
               <option value="Outro">Outro</option>
@@ -198,64 +211,47 @@
 
         <!-- PROFISSIONAL AUTÔNOMO -->
         <div
-          *ngIf="
-            tipoUsuarioSelecionado === tipoUsuarioEnum.PROFISSIONAL_AUTONOMO
-          "
+          *ngIf="tipoUsuarioSelecionado === tipoUsuarioEnum.PROFISSIONAL_AUTONOMO"
+          class="border-top pt-3"
         >
-          <div>
-            <label for="cpf" class="form-label text-white">CPF</label>
-            <input
-              type="text"
-              id="cpf"
-              class="form-control"
-              placeholder="Digite seu CPF"
-              formControlName="cpf"
-              mask="000.000.000-00"
-              [ngClass]="{
-                'is-invalid':
-                  registerForm.get('cpf')?.invalid &&
-                  registerForm.get('cpf')?.touched
-              }"
-            />
-            <div
-              *ngIf="
-                registerForm.get('cpf')?.invalid &&
-                registerForm.get('cpf')?.touched
-              "
-              class="invalid-feedback"
-            >
-              CPF é obrigatório.
+          <h6 class="text-main mb-3">Dados Profissionais</h6>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="cpf" class="form-label fw-semibold">CPF *</label>
+              <input
+                type="text"
+                id="cpf"
+                class="form-control"
+                placeholder="Digite seu CPF"
+                formControlName="cpf"
+                mask="000.000.000-00"
+                [class.is-invalid]="campoInvalido('cpf')"
+              />
+              <div class="invalid-feedback" *ngIf="campoInvalido('cpf')">
+                {{ getMensagemErro('cpf') }}
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label for="crm" class="form-label fw-semibold">CRM *</label>
+              <input
+                type="text"
+                id="crm"
+                class="form-control"
+                placeholder="Digite seu CRM"
+                formControlName="crm"
+                [class.is-invalid]="campoInvalido('crm')"
+              />
+              <div class="invalid-feedback" *ngIf="campoInvalido('crm')">
+                {{ getMensagemErro('crm') }}
+              </div>
             </div>
           </div>
 
-          <div>
-            <label for="crm" class="form-label text-white">CRM</label>
-            <input
-              type="text"
-              id="crm"
-              class="form-control"
-              placeholder="Digite seu CRM"
-              formControlName="crm"
-              [ngClass]="{
-                'is-invalid':
-                  registerForm.get('crm')?.invalid &&
-                  registerForm.get('crm')?.touched
-              }"
-            />
-            <div
-              *ngIf="
-                registerForm.get('crm')?.invalid &&
-                registerForm.get('crm')?.touched
-              "
-              class="invalid-feedback"
-            >
-              CRM é obrigatório.
-            </div>
-          </div>
-
-          <div>
-            <label for="especialidade" class="form-label text-white"
-              >Especialidade</label
+          <div class="mb-3">
+            <label for="especialidade" class="form-label fw-semibold"
+              >Especialidade *</label
             >
             <input
               type="text"
@@ -263,25 +259,15 @@
               class="form-control"
               placeholder="Digite sua especialidade"
               formControlName="especialidade"
-              [ngClass]="{
-                'is-invalid':
-                  registerForm.get('especialidade')?.invalid &&
-                  registerForm.get('especialidade')?.touched
-              }"
+              [class.is-invalid]="campoInvalido('especialidade')"
             />
-            <div
-              *ngIf="
-                registerForm.get('especialidade')?.invalid &&
-                registerForm.get('especialidade')?.touched
-              "
-              class="invalid-feedback"
-            >
-              Especialidade é obrigatória.
+            <div class="invalid-feedback" *ngIf="campoInvalido('especialidade')">
+              {{ getMensagemErro('especialidade') }}
             </div>
           </div>
 
-          <div>
-            <label for="formacao" class="form-label text-white">Formação</label>
+          <div class="mb-3">
+            <label for="formacao" class="form-label">Formação</label>
             <input
               type="text"
               id="formacao"
@@ -291,172 +277,159 @@
             />
           </div>
 
-          <div>
-            <label for="experiencia" class="form-label text-white"
+          <div class="mb-3">
+            <label for="experiencia" class="form-label"
               >Experiência</label
             >
             <textarea
               id="experiencia"
               class="form-control"
-              placeholder="Descreva sua experiência"
+              placeholder="Descreva sua experiência profissional"
               formControlName="experiencia"
               rows="3"
             ></textarea>
           </div>
 
-          <div>
-            <label for="descricao" class="form-label text-white"
-              >Descrição</label
+          <div class="mb-3">
+            <label for="descricao" class="form-label"
+              >Descrição Profissional</label
             >
             <textarea
               id="descricao"
               class="form-control"
-              placeholder="Descrição profissional"
+              placeholder="Breve descrição sobre sua atuação profissional"
               formControlName="descricao"
               rows="2"
             ></textarea>
           </div>
 
           <div class="mb-3">
-            <label for="siteProfissional" class="form-label text-white"
+            <label for="siteProfissional" class="form-label"
               >Site Profissional</label
             >
             <input
               type="url"
               id="siteProfissional"
               class="form-control"
-              placeholder="URL do seu site profissional"
+              placeholder="https://seusite.com.br"
               formControlName="siteProfissional"
             />
           </div>
         </div>
 
         <!-- CLÍNICA -->
-        <div *ngIf="tipoUsuarioSelecionado === tipoUsuarioEnum.CLINICA">
-          <div>
-            <label for="cnpj" class="form-label text-white">CNPJ</label>
-            <input
-              type="text"
-              id="cnpj"
-              class="form-control"
-              placeholder="Digite o CNPJ da clínica"
-              formControlName="cnpj"
-              mask="00.000.000/0000-00"
-              [ngClass]="{
-                'is-invalid':
-                  registerForm.get('cnpj')?.invalid &&
-                  registerForm.get('cnpj')?.touched
-              }"
-            />
-            <div
-              *ngIf="
-                registerForm.get('cnpj')?.invalid &&
-                registerForm.get('cnpj')?.touched
-              "
-              class="invalid-feedback"
-            >
-              CNPJ é obrigatório.
+        <div *ngIf="tipoUsuarioSelecionado === tipoUsuarioEnum.CLINICA" class="border-top pt-3">
+          <h6 class="text-main mb-3">Dados da Clínica</h6>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="cnpj" class="form-label fw-semibold">CNPJ *</label>
+              <input
+                type="text"
+                id="cnpj"
+                class="form-control"
+                placeholder="Digite o CNPJ da clínica"
+                formControlName="cnpj"
+                mask="00.000.000/0000-00"
+                [class.is-invalid]="campoInvalido('cnpj')"
+              />
+              <div class="invalid-feedback" *ngIf="campoInvalido('cnpj')">
+                {{ getMensagemErro('cnpj') }}
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label for="razaoSocial" class="form-label fw-semibold"
+                >Razão Social *</label
+              >
+              <input
+                type="text"
+                id="razaoSocial"
+                class="form-control"
+                placeholder="Digite a razão social"
+                formControlName="razaoSocial"
+                [class.is-invalid]="campoInvalido('razaoSocial')"
+              />
+              <div class="invalid-feedback" *ngIf="campoInvalido('razaoSocial')">
+                {{ getMensagemErro('razaoSocial') }}
+              </div>
             </div>
           </div>
 
-          <div>
-            <label for="razaoSocial" class="form-label text-white"
-              >Razão Social</label
-            >
-            <input
-              type="text"
-              id="razaoSocial"
-              class="form-control"
-              placeholder="Digite a razão social"
-              formControlName="razaoSocial"
-              [ngClass]="{
-                'is-invalid':
-                  registerForm.get('razaoSocial')?.invalid &&
-                  registerForm.get('razaoSocial')?.touched
-              }"
-            />
-            <div
-              *ngIf="
-                registerForm.get('razaoSocial')?.invalid &&
-                registerForm.get('razaoSocial')?.touched
-              "
-              class="invalid-feedback"
-            >
-              Razão social é obrigatória.
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="responsavelTecnico" class="form-label"
+                >Responsável Técnico</label
+              >
+              <input
+                type="text"
+                id="responsavelTecnico"
+                class="form-control"
+                placeholder="Nome do responsável técnico"
+                formControlName="responsavelTecnico"
+              />
+            </div>
+
+            <div class="col-md-6">
+              <label for="registroResponsavel" class="form-label"
+                >Registro do Responsável</label
+              >
+              <input
+                type="text"
+                id="registroResponsavel"
+                class="form-control"
+                placeholder="Número do registro"
+                formControlName="registroResponsavel"
+              />
             </div>
           </div>
 
-          <div>
-            <label for="responsavelTecnico" class="form-label text-white"
-              >Responsável Técnico</label
-            >
-            <input
-              type="text"
-              id="responsavelTecnico"
-              class="form-control"
-              placeholder="Nome do responsável técnico"
-              formControlName="responsavelTecnico"
-            />
-          </div>
-
-          <div>
-            <label for="registroResponsavel" class="form-label text-white"
-              >Registro do Responsável</label
-            >
-            <input
-              type="text"
-              id="registroResponsavel"
-              class="form-control"
-              placeholder="Registro do responsável técnico"
-              formControlName="registroResponsavel"
-            />
-          </div>
-
-          <div>
-            <label for="especialidadesAtendidas" class="form-label text-white"
-              >Especialidades Atendidas (separadas por vírgula)</label
+          <div class="mb-3">
+            <label for="especialidadesAtendidas" class="form-label"
+              >Especialidades Atendidas</label
             >
             <input
               type="text"
               id="especialidadesAtendidas"
               class="form-control"
-              placeholder="Ex: Cardiologia, Dermatologia"
+              placeholder="Ex: Cardiologia, Dermatologia, Ortopedia"
               formControlName="especialidadesAtendidas"
             />
+            <small class="text-muted">Separe por vírgula</small>
           </div>
 
-          <div>
-            <label for="site" class="form-label text-white">Site</label>
+          <div class="mb-3">
+            <label for="site" class="form-label">Site</label>
             <input
               type="url"
               id="site"
               class="form-control"
-              placeholder="URL do site da clínica"
+              placeholder="https://suaclinica.com.br"
               formControlName="site"
             />
           </div>
 
-          <div>
-            <label for="horarioFuncionamento" class="form-label text-white"
+          <div class="mb-3">
+            <label for="horarioFuncionamento" class="form-label"
               >Horário de Funcionamento</label
             >
             <input
               type="text"
               id="horarioFuncionamento"
               class="form-control"
-              placeholder="Ex: Seg a Sex, 8h às 18h"
+              placeholder="Ex: Segunda a Sexta, 8h às 18h"
               formControlName="horarioFuncionamento"
             />
           </div>
 
-          <div>
-            <label for="descricaoClinica" class="form-label text-white"
-              >Descrição</label
+          <div class="mb-3">
+            <label for="descricaoClinica" class="form-label"
+              >Descrição da Clínica</label
             >
             <textarea
               id="descricaoClinica"
               class="form-control"
-              placeholder="Descrição da clínica"
+              placeholder="Descreva os serviços e diferenciais da sua clínica"
               formControlName="descricaoClinica"
               rows="3"
             ></textarea>
@@ -469,71 +442,71 @@
             tipoUsuarioSelecionado === tipoUsuarioEnum.CLINICA ||
             tipoUsuarioSelecionado === tipoUsuarioEnum.PROFISSIONAL_AUTONOMO
           "
-          class="mb-4 mt-4"
+          class="border-top pt-3"
         >
-          <h6>Selecione um plano para anúncios</h6>
+          <h6 class="text-main mb-3">Selecione um Plano *</h6>
 
-          <div class="d-flex flex-wrap gap-3 justify-content-center">
-            <label
-              *ngFor="let plano of planos"
-              class="card plano-card p-3 flex-grow-1"
-              [ngClass]="{
-                'border-success shadow-lg':
-                  registerForm.get('planoSelecionado')?.value === plano.id,
-                'border-secondary':
-                  registerForm.get('planoSelecionado')?.value !== plano.id
-              }"
-              style="min-width: 220px; cursor: pointer; user-select: none"
-              [attr.for]="plano.id"
-            >
-              <input
-                type="radio"
-                class="d-none"
-                [id]="plano.id"
-                formControlName="planoSelecionado"
-                [value]="plano.id"
-              />
-              <div class="card-body p-0">
-                <h5 class="card-title text-success mb-2">{{ plano.nome }}</h5>
-                <p class="card-text mb-2" style="min-height: 3rem">
-                  {{ plano.descricao }}
-                </p>
-                <p class="fw-bold fs-5 mb-0">
-                  R$ {{ plano.preco | number : "1.2-2" }}
-                </p>
-              </div>
-            </label>
+          <div class="row g-3">
+            <div class="col-md-4" *ngFor="let plano of planos">
+              <label
+                class="card plano-card p-3 h-100"
+                [ngClass]="{
+                  'border-success shadow-sm':
+                    registerForm.get('planoSelecionado')?.value === plano.id,
+                  'border-light': registerForm.get('planoSelecionado')?.value !== plano.id
+                }"
+                style="cursor: pointer; transition: all 0.3s ease;"
+                [attr.for]="plano.id"
+              >
+                <input
+                  type="radio"
+                  class="d-none"
+                  [id]="plano.id"
+                  formControlName="planoSelecionado"
+                  [value]="plano.id"
+                />
+                <div class="card-body p-0 text-center">
+                  <h6 class="card-title text-success mb-2">{{ plano.nome }}</h6>
+                  <p class="card-text small mb-2" style="min-height: 3rem">
+                    {{ plano.descricao }}
+                  </p>
+                  <p class="fw-bold text-main mb-0">
+                    R$ {{ plano.preco | number : "1.2-2" }}
+                  </p>
+                </div>
+              </label>
+            </div>
           </div>
 
-          <div
-            *ngIf="
-              registerForm.get('planoSelecionado')?.invalid &&
-              registerForm.get('planoSelecionado')?.touched
-            "
-            class="invalid-feedback d-block mt-2"
-          >
-            Por favor, selecione um plano.
+          <div class="invalid-feedback d-block mt-2" *ngIf="campoInvalido('planoSelecionado')">
+            {{ getMensagemErro('planoSelecionado') }}
           </div>
         </div>
 
-        <div class="mt-3">
+        <!-- Botão de Submit -->
+        <div class="mt-4">
           <button
             type="submit"
-            class="btn btn-success w-100 mb-2"
-            [disabled]="registerForm.invalid"
-            style="background-color: #28b463"
+            class="btn btn-success w-100 py-2 fw-semibold"
+            [disabled]="registerForm.invalid || carregando"
+            style="background-color: #28b463; border-color: #28b463;"
           >
-            Criar Conta
+            <span *ngIf="!carregando">Criar Conta</span>
+            <span *ngIf="carregando">
+              <i class="fas fa-spinner fa-spin me-2"></i>
+              Criando conta...
+            </span>
           </button>
         </div>
       </form>
 
-      <div class="text-center mt-3 border-top pt-3">
-        <span class="text-white d-block mb-1">Já tem uma conta?</span>
+      <!-- Link para login -->
+      <div class="text-center mt-4 border-top pt-3">
+        <span class="text-muted d-block mb-2">Já tem uma conta?</span>
         <a
-          routerLink="/"
-          class="btn btn-outline-light btn-sm px-4"
-          style="border-color: #28b463; color: #28b463"
+          routerLink="/login"
+          class="btn btn-outline-main btn-sm px-4"
+          style="border-color: #1b4f72; color: #1b4f72;"
         >
           Fazer login
         </a>

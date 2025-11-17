@@ -26,6 +26,7 @@ export class RegisterComponent implements OnInit {
   tipoUsuarioSelecionado: string = '';
   tipoUsuarioEnum = TipoUsuario;
   hoje: string = new Date().toISOString().split('T')[0];
+  carregando = false;
 
   tipos: Tipo[] = [
     { value: TipoUsuario.PACIENTE, label: 'Paciente' },
@@ -74,11 +75,16 @@ export class RegisterComponent implements OnInit {
       tipo: ['', Validators.required],
       nome: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
-      senha: ['', Validators.required],
+      senha: ['', [Validators.required, Validators.minLength(6)]],
+      telefone: [''],
+      endereco: [''],
+      cidade: [''],
+      estado: [''],
+      cep: [''],
 
       // Campos para PACIENTE
       cpf: [''],
-      //dataNascimento: [''],
+      dataNascimento: [''],
       genero: [''],
 
       // Campos para PROFISSIONAL AUTÔNOMO
@@ -107,6 +113,11 @@ export class RegisterComponent implements OnInit {
       this.tipoUsuarioSelecionado = tipo;
       this.atualizarValidadoresPorTipo(tipo);
     });
+
+    // Observa mudanças na senha para avaliar força
+    this.registerForm.get('senha')?.valueChanges.subscribe(() => {
+      this.avaliarForcaSenha();
+    });
   }
 
   private atualizarValidadoresPorTipo(tipo: string) {
@@ -115,7 +126,7 @@ export class RegisterComponent implements OnInit {
     switch (tipo) {
       case TipoUsuario.PACIENTE:
         this.registerForm.get('cpf')?.setValidators([Validators.required]);
-        //this.registerForm.get('dataNascimento')?.setValidators([Validators.required]);
+        this.registerForm.get('dataNascimento')?.setValidators([Validators.required]);
         this.registerForm.get('planoSelecionado')?.clearValidators();
         break;
 
@@ -136,7 +147,7 @@ export class RegisterComponent implements OnInit {
         break;
     }
 
-    ['cpf', 'crm', 'especialidade', 'cnpj', 'razaoSocial', 'planoSelecionado']
+    ['cpf', 'crm', 'especialidade', 'cnpj', 'razaoSocial', 'planoSelecionado', 'dataNascimento']
       .forEach((campo) => {
         this.registerForm.get(campo)?.updateValueAndValidity();
       });
@@ -150,6 +161,7 @@ export class RegisterComponent implements OnInit {
       'cnpj',
       'razaoSocial',
       'planoSelecionado',
+      'dataNascimento',
     ];
     campos.forEach((campo) => {
       this.registerForm.get(campo)?.clearValidators();
@@ -209,10 +221,57 @@ export class RegisterComponent implements OnInit {
 
   onSubmit(): void {
     if (this.registerForm.valid) {
+      this.carregando = true;
+
       const formValue = this.registerForm.value;
 
-      this.registerService.registrarUsuario(formValue, formValue.tipo).subscribe({
-        next: () => {
+      // Prepara os dados do usuário base
+      const dadosUsuario: any = {
+        nome: formValue.nome,
+        email: formValue.email,
+        telefone: formValue.telefone,
+        endereco: formValue.endereco,
+        cidade: formValue.cidade,
+        estado: formValue.estado,
+        cep: formValue.cep,
+        tipo: formValue.tipo,
+        status: 'ativo'
+      };
+
+      // Adiciona campos específicos baseados no tipo
+      switch (formValue.tipo) {
+        case TipoUsuario.PACIENTE:
+          dadosUsuario.cpf = formValue.cpf;
+          dadosUsuario.dataNascimento = formValue.dataNascimento;
+          dadosUsuario.genero = formValue.genero;
+          break;
+
+        case TipoUsuario.PROFISSIONAL_AUTONOMO:
+          dadosUsuario.cpf = formValue.cpf;
+          dadosUsuario.crm = formValue.crm;
+          dadosUsuario.especialidade = formValue.especialidade;
+          dadosUsuario.formacao = formValue.formacao;
+          dadosUsuario.experiencia = formValue.experiencia;
+          dadosUsuario.descricao = formValue.descricao;
+          dadosUsuario.siteProfissional = formValue.siteProfissional;
+          break;
+
+        case TipoUsuario.CLINICA:
+          dadosUsuario.cnpj = formValue.cnpj;
+          dadosUsuario.razaoSocial = formValue.razaoSocial;
+          dadosUsuario.responsavelTecnico = formValue.responsavelTecnico;
+          dadosUsuario.registroResponsavel = formValue.registroResponsavel;
+          dadosUsuario.especialidadesAtendidas = formValue.especialidadesAtendidas;
+          dadosUsuario.site = formValue.site;
+          dadosUsuario.horarioFuncionamento = formValue.horarioFuncionamento;
+          dadosUsuario.descricao = formValue.descricaoClinica;
+          break;
+      }
+
+      // Chama o serviço de registro
+      this.registerService.registrarUsuario(dadosUsuario, formValue.tipo, formValue.senha).subscribe({
+        next: (usuario) => {
+          this.carregando = false;
           Swal.fire({
             icon: 'success',
             title: 'Conta criada!',
@@ -224,15 +283,33 @@ export class RegisterComponent implements OnInit {
           this.router.navigate(['/login']);
         },
         error: (err) => {
+          this.carregando = false;
+          console.error('Erro no registro:', err);
+
+          let mensagemErro = 'Erro ao criar conta. Tente novamente.';
+
+          if (err.message?.includes('User already registered')) {
+            mensagemErro = 'Este email já está cadastrado.';
+          } else if (err.message?.includes('Password should be at least')) {
+            mensagemErro = 'A senha deve ter pelo menos 6 caracteres.';
+          } else if (err.message?.includes('Invalid email')) {
+            mensagemErro = 'Email inválido.';
+          } else if (err.message) {
+            mensagemErro = err.message;
+          }
+
           Swal.fire({
             icon: 'error',
             title: 'Erro',
-            text: err.error?.message || 'Erro ao criar conta. Tente novamente.',
+            text: mensagemErro,
             confirmButtonColor: '#1B4F72',
           });
         },
       });
     } else {
+      // Marca todos os campos como touched para mostrar erros
+      this.marcarCamposComoTouched();
+
       Swal.fire({
         icon: 'warning',
         title: 'Campos obrigatórios',
@@ -240,5 +317,37 @@ export class RegisterComponent implements OnInit {
         confirmButtonColor: '#F1C40F',
       });
     }
+  }
+
+  private marcarCamposComoTouched(): void {
+    Object.keys(this.registerForm.controls).forEach(key => {
+      const control = this.registerForm.get(key);
+      control?.markAsTouched();
+    });
+  }
+
+  // Helper para mostrar erros no template
+  campoInvalido(campo: string): boolean {
+    const formControl = this.registerForm.get(campo);
+    return !!(formControl && formControl.invalid && (formControl.dirty || formControl.touched));
+  }
+
+  // Helper para mensagens de erro
+  getMensagemErro(campo: string): string {
+    const formControl = this.registerForm.get(campo);
+
+    if (formControl?.errors?.['required']) {
+      return 'Este campo é obrigatório.';
+    }
+
+    if (formControl?.errors?.['email']) {
+      return 'Email inválido.';
+    }
+
+    if (formControl?.errors?.['minlength']) {
+      return `Mínimo ${formControl.errors?.['minlength'].requiredLength} caracteres.`;
+    }
+
+    return '';
   }
 }

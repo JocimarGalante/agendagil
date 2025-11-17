@@ -1,7 +1,7 @@
 import { StatusConsulta } from "./status-consulta.model";
 
 export interface Consulta {
-  id?: number;
+  id?: string;
   paciente: string;
   medico: string;
   especialidade: string;

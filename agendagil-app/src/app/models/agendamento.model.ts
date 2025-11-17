@@ -1,14 +1,14 @@
 import { StatusConsulta } from "./status-consulta.model";
 
-// models/agendamento.model.ts
+// src/app/models/agendamento.model.ts
 export interface Agendamento {
-  id?: number;
+  id?: string; // Mudado para string
   paciente: string;
-  pacienteId: number;
+  pacienteId: string; // Mudado para string
   medico: string;
-  medicoId: number;
+  medicoId: string; // Mudado para string
   especialidade: string;
-  especialidadeId: number;
+  especialidadeId: string; // Mudado para string
   local: string;
   data: string;
   hora: string;
@@ -16,14 +16,22 @@ export interface Agendamento {
 }
 
 export interface Especialidade {
-  id: number;
+  id: string; // Mudado para string
   nome: string;
 }
 
 export interface Medico {
-  id: number;
+  id: string; // Mudado para string
   nome: string;
-  especialidadeId: number;
+  especialidadeId: string; // Mudado para string
   crm: string;
   local: string;
+}
+
+export interface DisponibilidadeMedico {
+  id: string;
+  medicoId: string;
+  data: string;
+  horariosDisponiveis: string[];
+  horariosOcupados: string[];
 }
