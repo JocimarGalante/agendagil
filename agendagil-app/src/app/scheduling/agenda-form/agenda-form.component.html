@@ -1,1 +1,131 @@
-<p>agenda-form works!</p>
+<!-- scheduling/agenda-form/agenda-form.component.html -->
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-header bg-main text-white">
+          <h4 class="mb-0">
+            <i class="bi bi-calendar-plus me-2"></i>
+            Agendar Nova Consulta
+          </h4>
+        </div>
+        <div class="card-body p-4">
+          <form [formGroup]="agendamentoForm" (ngSubmit)="onSubmit()">
+
+            <!-- Especialidade -->
+            <div class="mb-3">
+              <label for="especialidade" class="form-label fw-semibold">
+                Especialidade *
+              </label>
+              <select
+                id="especialidade"
+                formControlName="especialidadeId"
+                class="form-select"
+                [class.is-invalid]="isCampoInvalido('especialidadeId')">
+                <option value="">Selecione uma especialidade</option>
+                <option *ngFor="let especialidade of especialidades"
+                        [value]="especialidade.id">
+                  {{ especialidade.nome }}
+                </option>
+              </select>
+              <div class="invalid-feedback" *ngIf="isCampoInvalido('especialidadeId')">
+                Por favor, selecione uma especialidade.
+              </div>
+            </div>
+
+            <!-- Médico -->
+            <div class="mb-3">
+              <label for="medico" class="form-label fw-semibold">
+                Médico *
+              </label>
+              <select
+                id="medico"
+                formControlName="medicoId"
+                class="form-select"
+                [class.is-invalid]="isCampoInvalido('medicoId')"
+                [disabled]="carregandoMedicos || !agendamentoForm.get('especialidadeId')?.value">
+                <option value="">Selecione um médico</option>
+                <option *ngFor="let medico of medicosFiltrados"
+                        [value]="medico.id">
+                  {{ medico.nome }} - {{ medico.crm }}
+                </option>
+              </select>
+              <div class="invalid-feedback" *ngIf="isCampoInvalido('medicoId')">
+                Por favor, selecione um médico.
+              </div>
+              <div *ngIf="carregandoMedicos" class="text-muted small mt-1">
+                <i class="bi bi-arrow-repeat spinner"></i> Carregando médicos...
+              </div>
+
+              <!-- Info do médico selecionado -->
+              <div *ngIf="getMedicoSelecionado()" class="mt-2 p-3 bg-light rounded">
+                <h6 class="fw-semibold text-main">Informações do Médico:</h6>
+                <p class="mb-1"><strong>Local:</strong> {{ getMedicoSelecionado()?.local }}</p>
+                <p class="mb-0"><strong>CRM:</strong> {{ getMedicoSelecionado()?.crm }}</p>
+              </div>
+            </div>
+
+            <!-- Data -->
+            <div class="mb-3">
+              <label for="data" class="form-label fw-semibold">
+                Data da Consulta *
+              </label>
+              <input
+                type="date"
+                id="data"
+                formControlName="data"
+                class="form-control"
+                [class.is-invalid]="isCampoInvalido('data')"
+                [min]="getDataMinima()">
+              <div class="invalid-feedback" *ngIf="isCampoInvalido('data')">
+                {{ getErroData() }}
+              </div>
+            </div>
+
+            <!-- Horário -->
+            <div class="mb-4">
+              <label for="hora" class="form-label fw-semibold">
+                Horário *
+              </label>
+              <select
+                id="hora"
+                formControlName="hora"
+                class="form-select"
+                [class.is-invalid]="isCampoInvalido('hora')"
+                [disabled]="carregandoHorarios || horariosDisponiveis.length === 0">
+                <option value="">Selecione um horário</option>
+                <option *ngFor="let horario of horariosDisponiveis"
+                        [value]="horario">
+                  {{ horario }}
+                </option>
+              </select>
+              <div class="invalid-feedback" *ngIf="isCampoInvalido('hora')">
+                Por favor, selecione um horário.
+              </div>
+              <div *ngIf="carregandoHorarios" class="text-muted small mt-1">
+                <i class="bi bi-arrow-repeat spinner"></i> Carregando horários disponíveis...
+              </div>
+              <div *ngIf="horariosDisponiveis.length === 0 && agendamentoForm.get('medicoId')?.value && agendamentoForm.get('data')?.value && !carregandoHorarios"
+                   class="text-warning small mt-1">
+                Não há horários disponíveis para esta data.
+              </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+              <button type="button" class="btn btn-outline-secondary me-md-2"
+                      routerLink="/paciente/consultas">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+              </button>
+              <button type="submit" class="btn btn-primary"
+                      [disabled]="agendamentoForm.invalid || carregandoMedicos || carregandoHorarios">
+                <i class="bi bi-calendar-check me-1"></i>
+                Agendar Consulta
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -13,6 +13,7 @@ import { DashboardAdminComponent } from 'pages/dashboard-admin/dashboard-admin.c
 import { ConsultasComponent } from 'pages/dashboard-paciente/consultas/consultas.component';
 import { NotificacoesComponent } from 'pages/dashboard-paciente/notificacoes/notificacoes.component';
 import { HistoricoComponent } from 'pages/dashboard-paciente/historico/historico.component';
+import { AgendaFormComponent } from 'scheduling/agenda-form/agenda-form.component';
 
 const routes: Routes = [
   { path: '', component: LoginComponent },
@@ -23,6 +24,7 @@ const routes: Routes = [
     component: DashboardPacienteComponent,
     children: [
       { path: 'consultas', component: ConsultasComponent },
+      { path: 'agendar', component: AgendaFormComponent },
       { path: 'notificacoes', component: NotificacoesComponent },
       { path: 'historico', component: HistoricoComponent },
       { path: '', redirectTo: 'consultas', pathMatch: 'full' },

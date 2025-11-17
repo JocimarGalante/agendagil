@@ -7,6 +7,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { AuthModule } from '@auth/auth.module';
 import { PagesModule } from 'pages/pages.module';
 import { CoreModule } from 'core/core.module';
+import { SchedulingModule } from 'scheduling/scheduling.module';
 
 @NgModule({
   declarations: [
@@ -19,6 +20,7 @@ import { CoreModule } from 'core/core.module';
     AuthModule,
     PagesModule,
     CoreModule,
+    SchedulingModule,
     NgxMaskModule.forRoot(),
   ],
   providers: [],

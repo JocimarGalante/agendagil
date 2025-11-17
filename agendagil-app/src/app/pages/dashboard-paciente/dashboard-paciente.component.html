@@ -3,7 +3,7 @@
   <div
     [class.collapsed]="isCollapsed"
     [ngClass]="{
-      'sidebar': true,
+      sidebar: true,
       'bg-main': true,
       'text-white': true,
       'p-3': true,
@@ -14,7 +14,10 @@
     <!-- Título + Botão -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h5 class="m-0">Olá, {{ primeiroNome }}!</h5>
-      <button class="btn btn-sm btn-light text-main d-md-none" (click)="toggleSidebar()">
+      <button
+        class="btn btn-sm btn-light text-main d-md-none"
+        (click)="toggleSidebar()"
+      >
         <i class="bi" [ngClass]="isCollapsed ? 'bi-list' : 'bi-x'"></i>
       </button>
     </div>
@@ -22,23 +25,33 @@
     <!-- Menu -->
     <ul class="nav flex-column">
       <li class="nav-item">
+        <a class="nav-link text-white" routerLink="agendar">
+          <i class="bi bi-plus-circle-fill me-2"></i>
+          <span *ngIf="!isCollapsed">Nova Consulta</span>
+        </a>
+      </li>
+      <li class="nav-item">
         <a class="nav-link text-white" routerLink="consultas">
-          <i class="bi bi-calendar-check-fill me-2"></i> <span *ngIf="!isCollapsed">Consultas</span>
+          <i class="bi bi-calendar-check-fill me-2"></i>
+          <span *ngIf="!isCollapsed">Consultas</span>
         </a>
       </li>
       <li class="nav-item">
         <a class="nav-link text-white" routerLink="notificacoes">
-          <i class="bi bi-bell-fill me-2"></i> <span *ngIf="!isCollapsed">Notificações</span>
+          <i class="bi bi-bell-fill me-2"></i>
+          <span *ngIf="!isCollapsed">Notificações</span>
         </a>
       </li>
       <li class="nav-item">
         <a class="nav-link text-white" routerLink="historico">
-          <i class="bi bi-clock-history me-2"></i> <span *ngIf="!isCollapsed">Histórico</span>
+          <i class="bi bi-clock-history me-2"></i>
+          <span *ngIf="!isCollapsed">Histórico</span>
         </a>
       </li>
       <li class="nav-item mt-3">
         <a class="nav-link text-white" routerLink="/logout">
-          <i class="bi bi-box-arrow-right me-2"></i> <span *ngIf="!isCollapsed">Sair</span>
+          <i class="bi bi-box-arrow-right me-2"></i>
+          <span *ngIf="!isCollapsed">Sair</span>
         </a>
       </li>
     </ul>
@@ -47,7 +60,10 @@
   <!-- Conteúdo principal -->
   <div class="flex-grow-1 p-4 bg-light">
     <!-- Botão toggle visível só no mobile -->
-    <button class="btn btn-outline-primary mb-2 d-md-none" (click)="toggleSidebar()">
+    <button
+      class="btn btn-outline-primary mb-2 d-md-none"
+      (click)="toggleSidebar()"
+    >
       <i class="bi" [ngClass]="isCollapsed ? 'bi-list' : 'bi-x'"></i>
     </button>
     <router-outlet></router-outlet>

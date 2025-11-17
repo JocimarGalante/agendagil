@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { AgendaComponent } from './agenda/agenda.component';
 import { AgendaListComponent } from './agenda-list/agenda-list.component';
 import { AgendaFormComponent } from './agenda-form/agenda-form.component';
+import { ReactiveFormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
+import { RouterModule } from '@angular/router';
 
 
 
@@ -13,7 +16,15 @@ import { AgendaFormComponent } from './agenda-form/agenda-form.component';
     AgendaFormComponent
   ],
   imports: [
-    CommonModule
+    CommonModule,
+    ReactiveFormsModule,
+    RouterModule,
+    HttpClientModule
+  ],
+  exports: [
+    AgendaComponent,
+    AgendaListComponent,
+    AgendaFormComponent
   ]
 })
 export class SchedulingModule { }

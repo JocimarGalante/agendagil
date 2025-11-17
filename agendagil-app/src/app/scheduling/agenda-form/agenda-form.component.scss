@@ -1,0 +1,51 @@
+// scheduling/agenda-form/agenda-form.component.scss
+.bg-main {
+  background-color: #1B4F72;
+}
+
+.text-main {
+  color: #1B4F72;
+}
+
+.card {
+  border: none;
+  border-radius: 12px;
+}
+
+.card-header {
+  border-radius: 12px 12px 0 0 !important;
+}
+
+.form-select, .form-control {
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+
+  &:focus {
+    border-color: #1B4F72;
+    box-shadow: 0 0 0 0.2rem rgba(27, 79, 114, 0.25);
+  }
+
+  &.is-invalid {
+    border-color: #dc3545;
+  }
+}
+
+.btn-primary {
+  background-color: #1B4F72;
+  border-color: #1B4F72;
+
+  &:hover {
+    background-color: #154360;
+    border-color: #154360;
+  }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
