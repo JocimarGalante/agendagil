@@ -1,4 +1,4 @@
-// scheduling/agenda-form/agenda-form.component.ts
+// src/app/scheduling/agenda-form/agenda-form.component.ts
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -42,7 +42,6 @@ export class AgendaFormComponent implements OnInit {
   }
 
   debugDados(): void {
-    console.log('=== INICIANDO DEBUG ===');
     this.schedulingService.debugEspecialidades().subscribe();
     this.schedulingService.debugMedicos().subscribe();
   }
@@ -77,7 +76,6 @@ export class AgendaFormComponent implements OnInit {
   }
 
   carregarMedicos(especialidadeId: string): void {
-    // Mudar para string
     console.log('Carregando médicos para especialidade UUID:', especialidadeId);
     this.carregandoMedicos = true;
     this.medicosFiltrados = [];
@@ -134,7 +132,6 @@ export class AgendaFormComponent implements OnInit {
   }
 
   carregarHorarios(medicoId: string, data: string): void {
-    // Mudar para string
     this.carregandoHorarios = true;
     this.schedulingService.getHorariosDisponiveis(medicoId, data).subscribe({
       next: (horarios) => {
@@ -218,9 +215,14 @@ export class AgendaFormComponent implements OnInit {
         return;
       }
 
+      // CORREÇÃO: Garantir que pacienteId seja string (UUID)
+      const pacienteId = typeof this.usuario.id === 'number'
+        ? this.generateDeterministicUUID(this.usuario.id)
+        : this.usuario.id;
+
       const agendamento: Agendamento = {
         paciente: this.usuario.nome,
-        pacienteId: this.usuario.id.toString(), // Converter para string se necessário
+        pacienteId: pacienteId, // AGORA É UUID string
         medico: medico.nome,
         medicoId: medico.id, // UUID
         especialidade: especialidade.nome,
@@ -237,6 +239,12 @@ export class AgendaFormComponent implements OnInit {
       this.marcarCamposComoSujos();
       Swal.fire('Atenção', 'Preencha todos os campos obrigatórios.', 'warning');
     }
+  }
+
+  // Método para gerar UUID determinístico baseado no ID numérico
+  private generateDeterministicUUID(numericId: number): string {
+    const hex = numericId.toString(16).padStart(8, '0');
+    return `00000000-0000-4000-8000-${hex.padStart(12, '0')}`;
   }
 
   private confirmarAgendamento(agendamento: Agendamento): void {
@@ -296,7 +304,6 @@ export class AgendaFormComponent implements OnInit {
     return new Date(data).toLocaleDateString('pt-BR');
   }
 
-  // No agenda-form.component.ts, adicione este método:
   getErroData(): string {
     const dataControl = this.agendamentoForm.get('data');
     if (dataControl?.errors?.['required']) {

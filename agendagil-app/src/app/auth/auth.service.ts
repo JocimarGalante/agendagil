@@ -47,8 +47,6 @@ export class AuthService {
 
     return from(loginPromise).pipe(
       switchMap((result: any) => {
-        console.log('Resultado do login Supabase:', result);
-
         if (result.error) {
           throw new Error(this.tratarErroLogin(result.error));
         }
@@ -68,7 +66,6 @@ export class AuthService {
         localStorage.setItem('tokenExpiration', expirationTime.toString());
         this.currentUserSubject.next(usuario);
 
-        console.log('Login realizado com sucesso:', usuario);
         return usuario;
       }),
       catchError((error: any) => {

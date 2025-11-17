@@ -72,10 +72,33 @@ export interface MedicoSupabase {
 }
 
 export class ModelConverter {
+  // Método auxiliar para garantir que o valor seja string válida para UUID
+  private static ensureString(value: any): string {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'string') return value;
+
+    // Se for número, converter para string mas gerar warning
+    if (typeof value === 'number') {
+      console.warn('Número detectado onde era esperado UUID string:', value);
+      return value.toString();
+    }
+
+    return String(value);
+  }
+
+  // Método para gerar UUID v4
+  static generateUUID(): string {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
   // Conversão de Usuário
   static fromSupabaseUsuario(usuario: UsuarioSupabase): UsuarioBase {
     const base: any = {
-      id: usuario.id, // Manter como string
+      id: this.ensureString(usuario.id), // Garantir que seja string
       nome: usuario.nome,
       email: usuario.email,
       tipo: usuario.tipo,
@@ -125,7 +148,7 @@ export class ModelConverter {
 
   static toSupabaseUsuario(usuario: UsuarioBase): UsuarioSupabase {
     const base: any = {
-      id: usuario.id,
+      id: this.ensureString(usuario.id), // Garantir que seja string
       nome: usuario.nome,
       email: usuario.email,
       tipo: usuario.tipo,
@@ -168,10 +191,10 @@ export class ModelConverter {
     return base as UsuarioSupabase;
   }
 
-  // Conversão de Consulta - AGORA COM STRINGS
+  // Conversão de Consulta - CORRIGIDA para usar propriedades existentes
   static fromSupabaseConsulta(consulta: ConsultaSupabase): Consulta {
     return {
-      id: consulta.id, // Já é string
+      id: this.ensureString(consulta.id), // Garantir que seja string
       paciente: consulta.paciente,
       medico: consulta.medico,
       especialidade: consulta.especialidade,
@@ -183,14 +206,21 @@ export class ModelConverter {
   }
 
   static toSupabaseConsulta(consulta: Consulta): ConsultaSupabase {
+    // Se o ID for numérico ou inválido, gerar um UUID
+    let id = consulta.id;
+    if (!id || this.isNumber(id)) {
+      console.warn('ID inválido ou numérico detectado, gerando UUID:', id);
+      id = this.generateUUID();
+    }
+
     return {
-      id: consulta.id || '',
+      id: this.ensureString(id), // Garantir que seja string válida
       paciente: consulta.paciente,
-      paciente_id: '', // Será preenchido pelo service
+      paciente_id: '', // Será preenchido pelo service - CORREÇÃO: usar string vazia
       medico: consulta.medico,
-      medico_id: '', // Será preenchido pelo service
+      medico_id: '', // Será preenchido pelo service - CORREÇÃO: usar string vazia
       especialidade: consulta.especialidade,
-      especialidade_id: '', // Será preenchido pelo service
+      especialidade_id: '', // Será preenchido pelo service - CORREÇÃO: usar string vazia
       local: consulta.local,
       data: consulta.data,
       hora: consulta.hora,
@@ -198,16 +228,16 @@ export class ModelConverter {
     } as ConsultaSupabase;
   }
 
-  // Conversão de Agendamento - AGORA COM STRINGS
+  // Conversão de Agendamento - CORRIGIDA para garantir strings
   static fromSupabaseAgendamento(consulta: ConsultaSupabase): Agendamento {
     return {
-      id: consulta.id, // Manter como string
+      id: this.ensureString(consulta.id), // Garantir que seja string
       paciente: consulta.paciente,
-      pacienteId: consulta.paciente_id, // Manter como string
+      pacienteId: this.ensureString(consulta.paciente_id), // Garantir que seja string
       medico: consulta.medico,
-      medicoId: consulta.medico_id, // Manter como string
+      medicoId: this.ensureString(consulta.medico_id), // Garantir que seja string
       especialidade: consulta.especialidade,
-      especialidadeId: consulta.especialidade_id, // Manter como string
+      especialidadeId: this.ensureString(consulta.especialidade_id), // Garantir que seja string
       local: consulta.local,
       data: consulta.data,
       hora: consulta.hora,
@@ -215,25 +245,31 @@ export class ModelConverter {
     } as Agendamento;
   }
 
-  // Conversão de Especialidade - AGORA COM STRINGS
+  // Conversão de Especialidade - CORRIGIDA para garantir strings
   static fromSupabaseEspecialidade(
     especialidade: EspecialidadeSupabase
   ): Especialidade {
     return {
-      id: especialidade.id, // Manter como string
+      id: this.ensureString(especialidade.id), // Garantir que seja string
       nome: especialidade.nome,
     } as Especialidade;
   }
 
-  // Conversão de Médico - AGORA COM STRINGS
+  // Conversão de Médico - CORRIGIDA para garantir strings
   static fromSupabaseMedico(medico: MedicoSupabase): Medico {
     return {
-      id: medico.id, // Manter como string
+      id: this.ensureString(medico.id), // Garantir que seja string
       nome: medico.nome,
-      especialidadeId: medico.especialidade_id, // Manter como string
+      especialidadeId: this.ensureString(medico.especialidade_id), // Garantir que seja string
       crm: medico.crm,
       local: medico.local,
     } as Medico;
+  }
+
+  // Método para verificar se é número
+  private static isNumber(value: any): boolean {
+    if (value === null || value === undefined) return false;
+    return !isNaN(parseFloat(value)) && isFinite(value);
   }
 
   // Método para compatibilidade (se ainda precisar em algum lugar)
@@ -248,5 +284,25 @@ export class ModelConverter {
       hash = hash & hash;
     }
     return Math.abs(hash);
+  }
+
+  // Método para validar UUID
+  static isValidUUID(uuid: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
+  // Método para migrar IDs numéricos para UUID
+  static migrateNumericId(numericId: number | string): string {
+    if (typeof numericId === 'string' && this.isValidUUID(numericId)) {
+      return numericId; // Já é UUID válido
+    }
+
+    // Se for número ou string numérica, gerar UUID determinístico
+    const num = typeof numericId === 'string' ? parseInt(numericId, 10) : numericId;
+
+    // Gerar UUID determinístico baseado no número
+    const hex = num.toString(16).padStart(8, '0');
+    return `00000000-0000-4000-8000-${hex.padStart(12, '0')}`;
   }
 }
