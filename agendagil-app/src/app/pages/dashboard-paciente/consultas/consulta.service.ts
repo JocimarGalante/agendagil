@@ -12,7 +12,6 @@ import { ModelConverter } from 'core/helpers/model-converters';
 export class ConsultaService {
   constructor(private supabaseService: SupabaseService) {}
 
-  // src/app/services/consulta.service.ts
   getConsultas(): Observable<Consulta[]> {
     return from(this.supabaseService.getCurrentUser()).pipe(
       switchMap((user) => {

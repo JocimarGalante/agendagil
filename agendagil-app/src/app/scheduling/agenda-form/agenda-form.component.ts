@@ -199,16 +199,10 @@ export class AgendaFormComponent implements OnInit {
   }
 
   onSubmit(): void {
-    console.log('=== INICIANDO SUBMIT ===');
-    console.log('Form Value:', this.agendamentoForm.value);
-
     if (this.agendamentoForm.valid && this.usuario) {
       const formValue = this.agendamentoForm.value;
       const medico = this.getMedicoSelecionado();
       const especialidade = this.getEspecialidadeSelecionada();
-
-      console.log('Médico selecionado:', medico);
-      console.log('Especialidade selecionada:', especialidade);
 
       if (!medico || !especialidade) {
         Swal.fire('Erro', 'Dados incompletos para o agendamento.', 'error');
@@ -276,7 +270,7 @@ export class AgendaFormComponent implements OnInit {
               icon: 'success',
               confirmButtonText: 'OK',
             }).then(() => {
-              this.router.navigate(['/paciente/consultas']);
+              this.router.navigate(['/dashboard-paciente/consultas']);
             });
           },
           error: (erro) => {
