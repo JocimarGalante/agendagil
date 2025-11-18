@@ -42,7 +42,7 @@ export class RegisterService {
 
     const usuarioCompleto: UsuarioBase = {
       ...dados,
-      id: numericId,
+      id: numericId.toString(),
       tipo: tipoUsuario,
       status: 'ativo',
       criadoEm: new Date().toISOString(),

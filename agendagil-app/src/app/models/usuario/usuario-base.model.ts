@@ -1,7 +1,7 @@
 import { TipoUsuario } from './tipo-usuario.enum';
 
 export interface UsuarioBase {
-  id: number;
+  id: string;
   nome: string;
   email: string;
   senha?: string;
