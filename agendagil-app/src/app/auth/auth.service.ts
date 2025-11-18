@@ -105,6 +105,8 @@ export class AuthService {
       })
     ).pipe(
       switchMap((authResult: any) => {
+        console.log('📨 Resposta do Auth:', authResult);
+
         if (authResult.error) {
           throw new Error(this.tratarErroRegistro(authResult.error));
         }
@@ -113,58 +115,85 @@ export class AuthService {
           throw new Error('Usuário não retornado no registro');
         }
 
-        console.log('✅ Usuário criado no Auth. ID:', authResult.user.id);
+        // 🔥 AGORA O ID É O UUID DO SUPABASE AUTH
+        const userId = authResult.user.id;
 
-        // Aguardar para evitar conflitos com triggers
-        return from(new Promise((resolve) => setTimeout(resolve, 2000))).pipe(
-          switchMap(() => {
-            const perfilUsuario = {
-              id: authResult.user.id,
-              nome: dadosUsuario.nome,
-              email: email,
-              tipo: dadosUsuario.tipo || 'PACIENTE',
-              telefone: dadosUsuario.telefone,
-              foto_perfil_url: null,
-              status: authResult.user.confirmed_at ? 'ATIVO' : 'PENDENTE',
-              criado_em: new Date().toISOString(),
-              atualizado_em: new Date().toISOString(),
-
-              // ... adicione todos os outros campos aqui
-            };
-
-            // 🔥 USA UPSERT PARA EVITAR CONFLITO DE CHAVE PRIMÁRIA
-            return from(
-              this.supabaseService
-                .getClient()
-                .from('usuarios')
-                .upsert(perfilUsuario, { onConflict: 'id' })
-                .single()
-            ).pipe(
-              map((dbResult: any) => ({
-                dbResult,
-                authResult,
-                perfilUsuario,
-              }))
-            );
-          })
-        );
-      }),
-      map(({ dbResult, authResult, perfilUsuario }) => {
-        if (dbResult.error) {
-          console.error('❌ Erro no UPSERT:', dbResult.error);
-          throw dbResult.error;
+        if (!userId) {
+          throw new Error('ID do usuário não gerado');
         }
 
-        console.log('✅ Perfil salvo com UPSERT');
+        console.log('✅ Usuário criado no Auth. ID:', userId);
+
+        // Construir perfil do usuário
+        const perfilUsuario = {
+          id: userId, // UUID do Supabase Auth
+          nome: dadosUsuario.nome,
+          email: email,
+          tipo: dadosUsuario.tipo || 'PACIENTE',
+          telefone: dadosUsuario.telefone,
+          foto_perfil_url: null,
+          status: authResult.user.confirmed_at ? 'ATIVO' : 'PENDENTE',
+          // criado_em e atualizado_em serão gerados automaticamente pelo banco
+
+          // Campos específicos
+          ...(dadosUsuario.tipo === 'PACIENTE' && {
+            cpf: dadosUsuario.cpf,
+            data_nascimento: dadosUsuario.dataNascimento,
+            genero: dadosUsuario.genero,
+          }),
+
+          ...(dadosUsuario.tipo === 'PROFISSIONAL_AUTONOMO' && {
+            crm: dadosUsuario.crm,
+            especialidade: dadosUsuario.especialidade,
+            descricao: dadosUsuario.descricao,
+            formacao: dadosUsuario.formacao,
+            experiencia: dadosUsuario.experiencia,
+            site_profissional: dadosUsuario.siteProfissional,
+          }),
+
+          ...(dadosUsuario.tipo === 'CLINICA' && {
+            cnpj: dadosUsuario.cnpj,
+            razao_social: dadosUsuario.razaoSocial,
+            responsavel_tecnico: dadosUsuario.responsavelTecnico,
+            registro_responsavel: dadosUsuario.registroResponsavel,
+            especialidades_atendidas: dadosUsuario.especialidadesAtendidas,
+            site: dadosUsuario.site,
+            horario_funcionamento: dadosUsuario.horarioFuncionamento,
+          }),
+
+          // Campos comuns
+          endereco: dadosUsuario.endereco,
+          cidade: dadosUsuario.cidade,
+          estado: dadosUsuario.estado,
+          cep: dadosUsuario.cep,
+        };
+
+        console.log('📤 Inserindo perfil:', perfilUsuario);
+
+        // 🔥 INSERT SIMPLES - AGORA DEVE FUNCIONAR
+        return from(
+          this.supabaseService
+            .getClient()
+            .from('usuarios')
+            .insert([perfilUsuario])
+            .single()
+        );
+      }),
+      map((dbResult: any) => {
+        if (dbResult.error) {
+          console.error('❌ Erro ao inserir usuário:', dbResult.error);
+          throw new Error(this.tratarErroRegistro(dbResult.error));
+        }
+
+        console.log('✅ Usuário registrado com sucesso:', dbResult.data);
 
         return {
           success: true,
           usuario: dbResult.data,
-          emailConfirmacaoEnviado: !authResult.user.confirmed_at,
-          usuarioConfirmado: !!authResult.user.confirmed_at,
-          mensagem: authResult.user.confirmed_at
-            ? 'Conta criada e confirmada com sucesso!'
-            : 'Conta criada! Verifique seu email para confirmar.',
+          emailConfirmacaoEnviado: true,
+          usuarioConfirmado: false,
+          mensagem:
+            'Conta criada com sucesso! Verifique seu email para confirmar.',
         };
       }),
       catchError((error) => {
