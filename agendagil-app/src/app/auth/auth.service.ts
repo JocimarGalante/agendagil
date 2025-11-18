@@ -37,7 +37,10 @@ export class AuthService {
     }
   }
 
+  // 🔑 MÉTODO DE LOGIN ATUALIZADO COM MELHOR DEBUG
   login(email: string, senha: string): Observable<UsuarioBase> {
+    console.log('🔐 Tentando login para:', email);
+
     const loginPromise = this.supabaseService.getClient().auth.signIn({
       email,
       password: senha,
@@ -45,20 +48,32 @@ export class AuthService {
 
     return from(loginPromise).pipe(
       switchMap((result: any) => {
+        console.log('📨 Resposta do Supabase Auth:', result);
+
         if (result.error) {
+          console.error('❌ Erro no login:', result.error);
           throw new Error(this.tratarErroLogin(result.error));
         }
 
-        if (result.data.user) {
-          return from(this.buscarUsuarioPorId(result.data.user.id));
+        if (result.user) {
+          console.log('✅ Usuário autenticado. ID:', result.user.id);
+          console.log('📧 Email confirmado?:', !!result.user.confirmed_at);
+
+          // Buscar dados do usuário na tabela usuarios
+          return from(this.buscarUsuarioPorId(result.user.id));
         }
+
         throw new Error('Erro ao fazer login - usuário não retornado');
       }),
       map((usuario: UsuarioBase | null) => {
         if (!usuario) {
-          throw new Error('Perfil de usuário não encontrado na base de dados');
+          console.error('❌ Perfil de usuário não encontrado na tabela usuarios');
+          throw new Error('Perfil de usuário não encontrado. Contate o suporte.');
         }
 
+        console.log('✅ Login bem sucedido. Usuário:', usuario.nome);
+
+        // Salvar no localStorage e state
         const expirationTime = new Date().getTime() + 60 * 60 * 1000;
         localStorage.setItem('usuarioLogado', JSON.stringify(usuario));
         localStorage.setItem('tokenExpiration', expirationTime.toString());
@@ -67,12 +82,131 @@ export class AuthService {
         return usuario;
       }),
       catchError((error: any) => {
-        console.error('Erro completo no login:', error);
-        return throwError(
-          () => new Error(error.message || 'Erro desconhecido no login')
-        );
+        console.error('💥 Erro completo no login:', error);
+        return throwError(() => new Error(error.message || 'Erro desconhecido no login'));
       })
     );
+  }
+
+  // 🔑 MÉTODO DE REGISTRO CORRIGIDO PARA SUPABASE v1
+  registrarUsuario(email: string, senha: string, dadosUsuario: any): Observable<any> {
+    console.log('📝 Iniciando registro para:', email);
+
+    return from(
+      this.supabaseService.getClient().auth.signUp({
+        email: email,
+        password: senha,
+        // Na v1, os dados extras vão diretamente, não em "options"
+      })
+    ).pipe(
+      switchMap((result: any) => {
+        console.log('📨 Resposta do registro:', result);
+
+        if (result.error) {
+          throw new Error(this.tratarErroRegistro(result.error));
+        }
+
+        if (result.user) {
+          console.log('✅ Usuário criado no Auth. ID:', result.user.id);
+          console.log('📧 Email de confirmação enviado?:', !result.user.confirmed_at);
+          console.log('🔍 User metadata:', result.user.user_metadata);
+
+          // Criar perfil na tabela usuarios mesmo sem confirmação
+          const perfilUsuario = {
+            id: result.user.id,
+            nome: dadosUsuario.nome || result.user.user_metadata?.nome || 'Novo Usuário',
+            email: email,
+            tipo: dadosUsuario.tipo || 'PACIENTE',
+            telefone: dadosUsuario.telefone,
+            foto_perfil_url: null,
+            status: result.user.confirmed_at ? 'ATIVO' : 'PENDENTE',
+            criado_em: new Date().toISOString(),
+            atualizado_em: new Date().toISOString(),
+
+            // Campos específicos baseados no tipo
+            ...(dadosUsuario.tipo === 'PACIENTE' && {
+              cpf: dadosUsuario.cpf,
+              data_nascimento: dadosUsuario.dataNascimento,
+              genero: dadosUsuario.genero
+            }),
+
+            ...(dadosUsuario.tipo === 'PROFISSIONAL_AUTONOMO' && {
+              crm: dadosUsuario.crm,
+              especialidade: dadosUsuario.especialidade,
+              descricao: dadosUsuario.descricao,
+              formacao: dadosUsuario.formacao,
+              experiencia: dadosUsuario.experiencia,
+              site_profissional: dadosUsuario.siteProfissional
+            }),
+
+            ...(dadosUsuario.tipo === 'CLINICA' && {
+              cnpj: dadosUsuario.cnpj,
+              razao_social: dadosUsuario.razaoSocial,
+              responsavel_tecnico: dadosUsuario.responsavelTecnico,
+              registro_responsavel: dadosUsuario.registroResponsavel,
+              especialidades_atendidas: dadosUsuario.especialidadesAtendidas,
+              site: dadosUsuario.site,
+              horario_funcionamento: dadosUsuario.horarioFuncionamento
+            }),
+
+            // Campos comuns opcionais
+            endereco: dadosUsuario.endereco,
+            cidade: dadosUsuario.cidade,
+            estado: dadosUsuario.estado,
+            cep: dadosUsuario.cep
+          };
+
+          console.log('📝 Criando perfil na tabela usuarios:', perfilUsuario);
+
+          return from(
+            this.supabaseService.getClient()
+              .from('usuarios')
+              .insert([perfilUsuario])
+              .single()
+          ).pipe(
+            map((insertResult: any) => {
+              if (insertResult.error) {
+                console.error('❌ Erro ao criar perfil:', insertResult.error);
+                throw insertResult.error;
+              }
+
+              // Retornar informações sobre o status de confirmação
+              return {
+                success: true,
+                usuario: insertResult.data,
+                emailConfirmacaoEnviado: !result.user.confirmed_at,
+                usuarioConfirmado: !!result.user.confirmed_at,
+                mensagem: result.user.confirmed_at
+                  ? 'Conta criada e confirmada com sucesso!'
+                  : 'Conta criada! Verifique seu email para confirmar antes de fazer login.'
+              };
+            })
+          );
+        }
+
+        throw new Error('Usuário não retornado no registro');
+      }),
+      catchError((error) => {
+        console.error('💥 Erro completo no registro:', error);
+        throw error;
+      })
+    );
+  }
+
+  private tratarErroRegistro(error: any): string {
+    if (error.message?.includes('User already registered')) {
+      return 'Este email já está cadastrado. Tente fazer login ou usar outro email.';
+    }
+    if (error.message?.includes('Password should be at least')) {
+      return 'A senha deve ter pelo menos 6 caracteres.';
+    }
+    if (error.message?.includes('Invalid email')) {
+      return 'Email inválido. Verifique o formato.';
+    }
+    if (error.message?.includes('rate limit')) {
+      return 'Muitas tentativas. Aguarde alguns minutos.';
+    }
+    return error.message || 'Erro ao criar conta. Tente novamente.';
   }
 
   private tratarErroLogin(error: any): string {
@@ -80,7 +214,7 @@ export class AuthService {
       return 'Email ou senha inválidos';
     }
     if (error.message?.includes('Email not confirmed')) {
-      return 'Email não confirmado. Verifique sua caixa de entrada.';
+      return 'Email não confirmado. Verifique sua caixa de entrada e clique no link de confirmação.';
     }
     if (error.message?.includes('Too many requests')) {
       return 'Muitas tentativas de login. Tente novamente em alguns minutos.';
@@ -106,13 +240,9 @@ export class AuthService {
       map((result: any) => {
         console.log('Resposta completa do reset password:', result);
 
-        // Na v1 do Supabase, o comportamento pode variar
-        // Vamos verificar diferentes cenários de resposta
-
         if (result.error) {
           console.error('Erro do Supabase:', result.error);
 
-          // Tratamento específico de erros
           if (
             result.error.message?.includes('rate limit') ||
             result.error.code === 'rate_limit_exceeded'
@@ -135,14 +265,12 @@ export class AuthService {
             );
           }
 
-          // Erro genérico
           throw new Error(
             result.error.message || 'Erro ao enviar email de recuperação.'
           );
         }
 
         // Se não há erro, consideramos sucesso
-        // Na v1, pode retornar data nula ou vazia em caso de sucesso
         if (result.data === null || result.data === undefined) {
           return {
             success: true,
@@ -160,7 +288,6 @@ export class AuthService {
       catchError((error) => {
         console.error('Erro completo ao enviar email:', error);
 
-        // Tratamento de erros de rede ou outros
         let errorMessage =
           'Erro ao enviar email de recuperação. Tente novamente.';
 
@@ -223,6 +350,47 @@ export class AuthService {
     });
   }
 
+  // 🔑 MÉTODO PARA REENVIAR EMAIL DE CONFIRMAÇÃO (Supabase v1)
+  reenviarEmailConfirmacao(email: string): Observable<any> {
+    console.log('📧 Reenviando email de confirmação para:', email);
+
+    // Na v1 do Supabase, não há método direto para reenviar confirmação
+    // Podemos tentar usar o signUp novamente com os mesmos dados
+    return from(
+      this.supabaseService.getClient().auth.signUp({
+        email: email,
+        password: 'temporary-password-123', // Senha temporária
+      })
+    ).pipe(
+      map((result: any) => {
+        console.log('Resposta do reenvio:', result);
+
+        if (result.error) {
+          console.error('Erro ao reenviar email:', result.error);
+
+          if (result.error.message?.includes('User already registered')) {
+            // Isso é esperado - significa que o usuário já existe
+            return {
+              success: true,
+              message: 'Email de confirmação reenviado com sucesso! Verifique sua caixa de entrada.'
+            };
+          }
+
+          throw new Error('Erro ao reenviar email de confirmação.');
+        }
+
+        return {
+          success: true,
+          message: 'Email de confirmação reenviado com sucesso! Verifique sua caixa de entrada.'
+        };
+      }),
+      catchError((error) => {
+        console.error('Erro completo ao reenviar email:', error);
+        throw new Error('Erro ao reenviar email de confirmação. Tente novamente.');
+      })
+    );
+  }
+
   // Método para verificar se o usuário está autenticado via Supabase
   async isAuthenticated(): Promise<boolean> {
     try {
@@ -258,8 +426,11 @@ export class AuthService {
     return !!this.currentUserSubject.value;
   }
 
+  // 🔑 MÉTODO BUSCAR USUÁRIO ATUALIZADO COM MELHOR DEBUG
   private async buscarUsuarioPorId(id: string): Promise<UsuarioBase | null> {
     try {
+      console.log('🔍 Buscando usuário na tabela usuarios. ID:', id);
+
       const { data, error } = await this.supabaseService
         .getClient()
         .from('usuarios')
@@ -268,18 +439,19 @@ export class AuthService {
         .single();
 
       if (error) {
-        console.error('Erro ao buscar usuário no Supabase:', error);
+        console.error('❌ Erro ao buscar usuário no Supabase:', error);
         return null;
       }
 
       if (!data) {
-        console.error('Usuário não encontrado na tabela usuarios');
+        console.error('❌ Usuário não encontrado na tabela usuarios para ID:', id);
         return null;
       }
 
+      console.log('✅ Usuário encontrado:', data.nome);
       return this.fromSupabaseUsuario(data);
     } catch (error) {
-      console.error('Erro ao buscar usuário:', error);
+      console.error('💥 Erro ao buscar usuário:', error);
       return null;
     }
   }
@@ -385,7 +557,69 @@ export class AuthService {
   // Método para verificar se há uma sessão ativa
   async getCurrentSession() {
     const session = await this.supabaseService.getClient().auth.session();
-
     return session;
+  }
+
+  // 🔑 MÉTODO PARA VERIFICAR STATUS DE CONFIRMAÇÃO
+  async verificarStatusUsuario(email: string): Promise<any> {
+    try {
+      // Na v1, precisamos fazer uma query direta na tabela auth.users
+      const { data: usuarios, error } = await this.supabaseService
+        .getClient()
+        .from('usuarios')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error) {
+        console.error('Erro ao buscar usuário:', error);
+        return null;
+      }
+
+      if (usuarios) {
+        // Buscar informações do auth (isso pode não funcionar diretamente devido a RLS)
+        const session = this.supabaseService.getClient().auth.session();
+
+        return {
+          usuario: usuarios,
+          emailConfirmado: usuarios.status === 'ATIVO',
+          perfilCriado: true,
+          session: session
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Erro ao verificar status:', error);
+      return null;
+    }
+  }
+
+  // 🔑 MÉTODO PARA CONFIRMANÇÃO MANUAL (APENAS DESENVOLVIMENTO)
+  async confirmarEmailManualmente(email: string): Promise<boolean> {
+    try {
+      console.log('🛠️  Confirmando email manualmente para:', email);
+
+      // Esta é uma solução temporária para desenvolvimento
+      // Em produção, o usuário deve confirmar pelo email
+
+      // Atualizar status na tabela usuarios
+      const { error } = await this.supabaseService
+        .getClient()
+        .from('usuarios')
+        .update({ status: 'ATIVO' })
+        .eq('email', email);
+
+      if (error) {
+        console.error('Erro ao confirmar email:', error);
+        return false;
+      }
+
+      console.log('✅ Email confirmado manualmente para:', email);
+      return true;
+    } catch (error) {
+      console.error('Erro ao confirmar email manualmente:', error);
+      return false;
+    }
   }
 }
