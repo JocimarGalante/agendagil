@@ -37,12 +37,9 @@ export class RegisterService {
   }
 
   private criarPerfilUsuario(userId: string, dados: UsuarioBase, tipoUsuario: TipoUsuario): Observable<UsuarioBase> {
-    // Converte UUID para número (para manter compatibilidade com seus models)
-    const numericId = this.parseId(userId);
-
     const usuarioCompleto: UsuarioBase = {
       ...dados,
-      id: numericId.toString(),
+      id: userId,
       tipo: tipoUsuario,
       status: 'ativo',
       criadoEm: new Date().toISOString(),
