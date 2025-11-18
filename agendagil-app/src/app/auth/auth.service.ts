@@ -91,6 +91,7 @@ export class AuthService {
   }
 
   // 🔑 MÉTODO DE REGISTRO CORRIGIDO
+  // 🔑 MÉTODO DE REGISTRO COMPLETO E CORRIGIDO
   registrarUsuario(
     email: string,
     senha: string,
@@ -105,105 +106,165 @@ export class AuthService {
       })
     ).pipe(
       switchMap((authResult: any) => {
-        console.log('📨 Resposta do Auth:', authResult);
+        console.log('📨 Resposta completa do Auth:', authResult);
 
         if (authResult.error) {
+          console.error('❌ Erro no Auth:', authResult.error);
           throw new Error(this.tratarErroRegistro(authResult.error));
         }
 
         if (!authResult.user) {
+          console.error('❌ Usuário não retornado no registro');
           throw new Error('Usuário não retornado no registro');
         }
 
-        // 🔥 AGORA O ID É O UUID DO SUPABASE AUTH
         const userId = authResult.user.id;
-
-        if (!userId) {
-          throw new Error('ID do usuário não gerado');
-        }
-
         console.log('✅ Usuário criado no Auth. ID:', userId);
+        console.log('📧 Email confirmado?:', !!authResult.user.confirmed_at);
 
-        // Construir perfil do usuário
-        const perfilUsuario = {
-          id: userId, // UUID do Supabase Auth
+        // Construir perfil completo do usuário
+        const perfilUsuario: any = {
+          id: userId,
           nome: dadosUsuario.nome,
           email: email,
           tipo: dadosUsuario.tipo || 'PACIENTE',
           telefone: dadosUsuario.telefone,
           foto_perfil_url: null,
           status: authResult.user.confirmed_at ? 'ATIVO' : 'PENDENTE',
-          // criado_em e atualizado_em serão gerados automaticamente pelo banco
-
-          // Campos específicos
-          ...(dadosUsuario.tipo === 'PACIENTE' && {
-            cpf: dadosUsuario.cpf,
-            data_nascimento: dadosUsuario.dataNascimento,
-            genero: dadosUsuario.genero,
-          }),
-
-          ...(dadosUsuario.tipo === 'PROFISSIONAL_AUTONOMO' && {
-            crm: dadosUsuario.crm,
-            especialidade: dadosUsuario.especialidade,
-            descricao: dadosUsuario.descricao,
-            formacao: dadosUsuario.formacao,
-            experiencia: dadosUsuario.experiencia,
-            site_profissional: dadosUsuario.siteProfissional,
-          }),
-
-          ...(dadosUsuario.tipo === 'CLINICA' && {
-            cnpj: dadosUsuario.cnpj,
-            razao_social: dadosUsuario.razaoSocial,
-            responsavel_tecnico: dadosUsuario.responsavelTecnico,
-            registro_responsavel: dadosUsuario.registroResponsavel,
-            especialidades_atendidas: dadosUsuario.especialidadesAtendidas,
-            site: dadosUsuario.site,
-            horario_funcionamento: dadosUsuario.horarioFuncionamento,
-          }),
-
-          // Campos comuns
-          endereco: dadosUsuario.endereco,
-          cidade: dadosUsuario.cidade,
-          estado: dadosUsuario.estado,
-          cep: dadosUsuario.cep,
+          criado_em: new Date().toISOString(),
+          atualizado_em: new Date().toISOString(),
+          endereco: dadosUsuario.endereco || null,
+          cidade: dadosUsuario.cidade || null,
+          estado: dadosUsuario.estado || null,
+          cep: dadosUsuario.cep || null,
         };
 
-        console.log('📤 Inserindo perfil:', perfilUsuario);
+        // Adicionar campos específicos baseados no tipo
+        switch (dadosUsuario.tipo) {
+          case 'PACIENTE':
+            perfilUsuario.cpf = dadosUsuario.cpf || null;
+            perfilUsuario.data_nascimento = dadosUsuario.dataNascimento || null;
+            perfilUsuario.genero = dadosUsuario.genero || null;
+            break;
 
-        // 🔥 INSERT SIMPLES - AGORA DEVE FUNCIONAR
-        return from(
-          this.supabaseService
-            .getClient()
-            .from('usuarios')
-            .insert([perfilUsuario])
-            .single()
-        );
-      }),
-      map((dbResult: any) => {
-        if (dbResult.error) {
-          console.error('❌ Erro ao inserir usuário:', dbResult.error);
-          throw new Error(this.tratarErroRegistro(dbResult.error));
+          case 'PROFISSIONAL_AUTONOMO':
+            perfilUsuario.crm = dadosUsuario.crm || null;
+            perfilUsuario.especialidade = dadosUsuario.especialidade || null;
+            perfilUsuario.descricao = dadosUsuario.descricao || null;
+            perfilUsuario.formacao = dadosUsuario.formacao || null;
+            perfilUsuario.experiencia = dadosUsuario.experiencia || null;
+            perfilUsuario.site_profissional =
+              dadosUsuario.siteProfissional || null;
+            break;
+
+          case 'CLINICA':
+            perfilUsuario.cnpj = dadosUsuario.cnpj || null;
+            perfilUsuario.razao_social = dadosUsuario.razaoSocial || null;
+            perfilUsuario.responsavel_tecnico =
+              dadosUsuario.responsavelTecnico || null;
+            perfilUsuario.registro_responsavel =
+              dadosUsuario.registroResponsavel || null;
+            perfilUsuario.especialidades_atendidas =
+              dadosUsuario.especialidadesAtendidas || null;
+            perfilUsuario.site = dadosUsuario.site || null;
+            perfilUsuario.horario_funcionamento =
+              dadosUsuario.horarioFuncionamento || null;
+            perfilUsuario.descricao = dadosUsuario.descricao || null;
+            break;
         }
 
-        console.log('✅ Usuário registrado com sucesso:', dbResult.data);
+        console.log('📤 Perfil a ser inserido:', perfilUsuario);
 
+        // AGUARDAR 2 SEGUNDOS PARA EVITAR CONFLITOS
+        return from(new Promise((resolve) => setTimeout(resolve, 2000))).pipe(
+          switchMap(() => {
+            console.log('🔄 Tentando inserir na tabela usuarios...');
+
+            return from(
+              this.supabaseService
+                .getClient()
+                .from('usuarios')
+                .insert([perfilUsuario])
+                .single()
+            ).pipe(
+              map((dbResult: any) => ({
+                dbResult,
+                authResult,
+                perfilUsuario,
+              }))
+            );
+          })
+        );
+      }),
+      map(({ dbResult, authResult, perfilUsuario }) => {
+        console.log('📨 Resposta do banco:', dbResult);
+
+        if (dbResult.error) {
+          console.error('❌ Erro ao inserir no banco:', dbResult.error);
+
+          // Tratamento específico para erro de RLS
+          if (
+            dbResult.error.message.includes('row-level security') ||
+            dbResult.error.message.includes('violates row-level security')
+          ) {
+            throw new Error('POLITICA_RLS_BLOQUEIO');
+          }
+
+          // Tratamento para chave duplicada
+          if (
+            dbResult.error.message.includes('duplicate key') ||
+            dbResult.error.code === '23505'
+          ) {
+            throw new Error('USUARIO_JA_EXISTE');
+          }
+
+          throw new Error(`ERRO_BANCO: ${dbResult.error.message}`);
+        }
+
+        console.log('✅ Usuário registrado com sucesso na tabela usuarios!');
+
+        // Retornar resultado formatado
         return {
           success: true,
           usuario: dbResult.data,
-          emailConfirmacaoEnviado: true,
-          usuarioConfirmado: false,
-          mensagem:
-            'Conta criada com sucesso! Verifique seu email para confirmar.',
+          emailConfirmacaoEnviado: !authResult.user.confirmed_at,
+          usuarioConfirmado: !!authResult.user.confirmed_at,
+          mensagem: authResult.user.confirmed_at
+            ? 'Conta criada e confirmada com sucesso!'
+            : 'Conta criada com sucesso! Verifique seu email para confirmar.',
         };
       }),
       catchError((error) => {
         console.error('💥 Erro completo no registro:', error);
-        throw error;
+
+        // Tratamento específico de erros
+        let mensagemErro = 'Erro ao criar conta. Tente novamente.';
+
+        if (error.message === 'POLITICA_RLS_BLOQUEIO') {
+          mensagemErro =
+            'Erro de configuração de segurança. Contate o suporte.';
+        } else if (error.message === 'USUARIO_JA_EXISTE') {
+          mensagemErro = 'Este usuário já está cadastrado. Tente fazer login.';
+        } else if (error.message.includes('ERRO_BANCO:')) {
+          mensagemErro =
+            'Erro no servidor. Tente novamente em alguns instantes.';
+        } else if (error.message.includes('User already registered')) {
+          mensagemErro = 'Este email já está cadastrado. Tente fazer login.';
+        } else if (error.message.includes('Password should be at least')) {
+          mensagemErro = 'A senha deve ter pelo menos 6 caracteres.';
+        } else if (error.message.includes('Invalid email')) {
+          mensagemErro = 'Email inválido. Verifique o formato.';
+        }
+
+        return throwError(() => new Error(mensagemErro));
       })
     );
   }
 
+  // 🔧 MÉTODO AUXILIAR PARA TRATAR ERROS DE REGISTRO
   private tratarErroRegistro(error: any): string {
+    console.log('🔧 Tratando erro de registro:', error);
+
     if (error.message?.includes('User already registered')) {
       return 'Este email já está cadastrado. Tente fazer login ou usar outro email.';
     }
@@ -219,6 +280,7 @@ export class AuthService {
     if (error.message?.includes('duplicate key')) {
       return 'Este usuário já existe no sistema.';
     }
+
     return error.message || 'Erro ao criar conta. Tente novamente.';
   }
 
