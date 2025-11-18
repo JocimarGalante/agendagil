@@ -90,43 +90,49 @@ export class SchedulingService {
   criarAgendamento(agendamento: Agendamento): Observable<Agendamento> {
     console.log('Criando agendamento:', agendamento);
 
-    // Usar o método helper do SupabaseService
-    return from(this.supabaseService.getCurrentUser()).pipe(
-      switchMap((user) => {
-        if (!user) {
+    // Usar o método helper específico para obter o ID do usuário
+    return from(this.supabaseService.getCurrentUserId()).pipe(
+      switchMap((pacienteId) => {
+        if (!pacienteId) {
           throw new Error('Usuário não autenticado');
         }
 
-        // Usar o UUID real do usuário autenticado do Supabase Auth
-        const pacienteId = user.id;
-
         console.log('UUID real do usuário:', pacienteId);
 
-        // VALIDAÇÃO: Garantir que todos os IDs sejam UUIDs válidos
-        const consultaSupabase = {
-          paciente: agendamento.paciente,
-          paciente_id: pacienteId, // UUID real do usuário autenticado
-          medico: agendamento.medico,
-          medico_id: this.ensureUUID(agendamento.medicoId), // Garantir UUID válido
-          especialidade: agendamento.especialidade,
-          especialidade_id: this.ensureUUID(agendamento.especialidadeId), // Garantir UUID válido
-          local: agendamento.local,
-          data: agendamento.data,
-          hora: agendamento.hora,
-          status: agendamento.status,
-          criado_em: new Date().toISOString(),
-          atualizado_em: new Date().toISOString(),
-        };
+        // VALIDAÇÃO: Verificar se já existe agendamento para mesma especialidade
+        return this.verificarAgendamentoExistente(pacienteId, agendamento.especialidadeId).pipe(
+          switchMap((jaExisteAgendamento) => {
+            if (jaExisteAgendamento) {
+              throw new Error(`Você já possui uma consulta agendada para ${agendamento.especialidade}. Cancele a consulta existente antes de agendar uma nova.`);
+            }
 
-        console.log('Dados para inserir no Supabase:', consultaSupabase);
+            // VALIDAÇÃO: Garantir que todos os IDs sejam UUIDs válidos
+            const consultaSupabase = {
+              paciente: agendamento.paciente,
+              paciente_id: pacienteId, // UUID real do usuário autenticado
+              medico: agendamento.medico,
+              medico_id: this.ensureUUID(agendamento.medicoId), // Garantir UUID válido
+              especialidade: agendamento.especialidade,
+              especialidade_id: this.ensureUUID(agendamento.especialidadeId), // Garantir UUID válido
+              local: agendamento.local,
+              data: agendamento.data,
+              hora: agendamento.hora,
+              status: agendamento.status,
+              criado_em: new Date().toISOString(),
+              atualizado_em: new Date().toISOString(),
+            };
 
-        return from(
-          this.supabaseService
-            .getClient()
-            .from('consultas')
-            .insert([consultaSupabase])
-            .select()
-            .single()
+            console.log('Dados para inserir no Supabase:', consultaSupabase);
+
+            return from(
+              this.supabaseService
+                .getClient()
+                .from('consultas')
+                .insert([consultaSupabase])
+                .select()
+                .single()
+            );
+          })
         );
       }),
       map((result: any) => {
@@ -162,6 +168,64 @@ export class SchedulingService {
         }
 
         throw error;
+      })
+    );
+  }
+
+  // NOVO MÉTODO: Verificar se já existe agendamento para a mesma especialidade
+  private verificarAgendamentoExistente(pacienteId: string, especialidadeId: string): Observable<boolean> {
+    console.log('Verificando agendamentos existentes para paciente:', pacienteId, 'especialidade:', especialidadeId);
+
+    return from(
+      this.supabaseService.getClient()
+        .from('consultas')
+        .select('id, especialidade, status')
+        .eq('paciente_id', pacienteId)
+        .eq('especialidade_id', especialidadeId)
+        .in('status', [1, 2]) // Status: Agendada (1) ou Confirmada (2)
+    ).pipe(
+      map((result: any) => {
+        if (result.error) {
+          console.error('Erro ao verificar agendamentos existentes:', result.error);
+          return false; // Em caso de erro, permite o agendamento
+        }
+
+        const agendamentosExistentes = result.data || [];
+        console.log('Agendamentos existentes encontrados:', agendamentosExistentes);
+
+        // Retorna true se encontrar algum agendamento ativo para a mesma especialidade
+        return agendamentosExistentes.length > 0;
+      }),
+      catchError((error) => {
+        console.error('Erro ao verificar agendamentos existentes:', error);
+        return of(false); // Em caso de erro, permite o agendamento
+      })
+    );
+  }
+
+  // MÉTODO ADICIONAL: Obter consultas ativas do usuário
+  getConsultasAtivasDoUsuario(): Observable<any[]> {
+    return from(this.supabaseService.getCurrentUserId()).pipe(
+      switchMap((pacienteId) => {
+        if (!pacienteId) {
+          return of([]);
+        }
+
+        return from(
+          this.supabaseService.getClient()
+            .from('consultas')
+            .select('id, especialidade, data, hora, status')
+            .eq('paciente_id', pacienteId)
+            .in('status', [1, 2]) // Status: Agendada (1) ou Confirmada (2)
+            .order('data', { ascending: true })
+        );
+      }),
+      map((result: any) => {
+        if (result.error) {
+          console.error('Erro ao buscar consultas ativas:', result.error);
+          return [];
+        }
+        return result.data || [];
       })
     );
   }

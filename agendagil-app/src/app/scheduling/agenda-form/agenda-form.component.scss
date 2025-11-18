@@ -1,10 +1,10 @@
 // scheduling/agenda-form/agenda-form.component.scss
 .bg-main {
-  background-color: #1B4F72;
+  background-color: #1b4f72;
 }
 
 .text-main {
-  color: #1B4F72;
+  color: #1b4f72;
 }
 
 .card {
@@ -16,13 +16,14 @@
   border-radius: 12px 12px 0 0 !important;
 }
 
-.form-select, .form-control {
+.form-select,
+.form-control {
   border-radius: 8px;
   border: 2px solid #e9ecef;
   transition: all 0.3s ease;
 
   &:focus {
-    border-color: #1B4F72;
+    border-color: #1b4f72;
     box-shadow: 0 0 0 0.2rem rgba(27, 79, 114, 0.25);
   }
 
@@ -32,8 +33,8 @@
 }
 
 .btn-primary {
-  background-color: #1B4F72;
-  border-color: #1B4F72;
+  background-color: #1b4f72;
+  border-color: #1b4f72;
 
   &:hover {
     background-color: #154360;
@@ -45,7 +46,28 @@
   animation: spin 1s linear infinite;
 }
 
+.consultas-ativas-alerta {
+  border-left: 4px solid #ffc107;
+  background-color: #fffbf0;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 4px;
+
+  .consulta-item {
+    font-size: 0.9em;
+    margin-bottom: 5px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

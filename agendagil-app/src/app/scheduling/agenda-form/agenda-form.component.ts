@@ -22,6 +22,7 @@ export class AgendaFormComponent implements OnInit {
   usuario: UsuarioBase | null = null;
   carregandoMedicos = false;
   carregandoHorarios = false;
+  consultasAtivas: any[] = []; // NOVO: Para mostrar consultas existentes
 
   constructor(
     private fb: FormBuilder,
@@ -39,6 +40,56 @@ export class AgendaFormComponent implements OnInit {
 
     // Debug inicial
     this.debugDados();
+  }
+
+  // NOVO MÉTODO: Carregar consultas ativas do usuário
+  carregarConsultasAtivas(): void {
+    this.schedulingService.getConsultasAtivasDoUsuario().subscribe({
+      next: (consultas) => {
+        this.consultasAtivas = consultas;
+        console.log('Consultas ativas do usuário:', this.consultasAtivas);
+      },
+      error: (erro) => {
+        console.error('Erro ao carregar consultas ativas:', erro);
+      },
+    });
+  }
+
+  // NOVO MÉTODO: Verificar se já existe consulta para a especialidade selecionada
+  verificarConsultaExistente(especialidadeId: string): boolean {
+    if (!especialidadeId || this.consultasAtivas.length === 0) {
+      return false;
+    }
+
+    const especialidadeSelecionada = this.especialidades.find(
+      (e) => e.id === especialidadeId
+    );
+    const jaExisteConsulta = this.consultasAtivas.some(
+      (consulta) =>
+        consulta.especialidade_id === especialidadeId &&
+        [1, 2].includes(consulta.status)
+    );
+
+    if (jaExisteConsulta && especialidadeSelecionada) {
+      Swal.fire({
+        title: 'Consulta já agendada',
+        html: `
+          <div class="text-start">
+            <p>Você já possui uma consulta agendada para <strong>${especialidadeSelecionada.nome}</strong>.</p>
+            <p>Por favor, cancele a consulta existente antes de agendar uma nova.</p>
+          </div>
+        `,
+        icon: 'warning',
+        confirmButtonText: 'Entendi',
+        customClass: {
+          confirmButton: 'btn btn-warning',
+          popup: 'swal2-border-radius',
+        },
+      });
+      return true;
+    }
+
+    return false;
   }
 
   debugDados(): void {
@@ -107,7 +158,15 @@ export class AgendaFormComponent implements OnInit {
       .get('especialidadeId')
       ?.valueChanges.subscribe((especialidadeId) => {
         console.log('Especialidade alterada (UUID):', especialidadeId);
+
+        // NOVO: Verificar se já existe consulta para esta especialidade
         if (especialidadeId) {
+          const existeConsulta =
+            this.verificarConsultaExistente(especialidadeId);
+          if (existeConsulta) {
+            this.agendamentoForm.patchValue({ especialidadeId: '' });
+            return;
+          }
           this.carregarMedicos(especialidadeId);
         } else {
           this.medicosFiltrados = [];
@@ -199,28 +258,34 @@ export class AgendaFormComponent implements OnInit {
   }
 
   onSubmit(): void {
+    console.log('=== INICIANDO SUBMIT ===');
+    console.log('Form Value:', this.agendamentoForm.value);
+
     if (this.agendamentoForm.valid && this.usuario) {
       const formValue = this.agendamentoForm.value;
       const medico = this.getMedicoSelecionado();
       const especialidade = this.getEspecialidadeSelecionada();
+
+      console.log('Médico selecionado:', medico);
+      console.log('Especialidade selecionada:', especialidade);
 
       if (!medico || !especialidade) {
         Swal.fire('Erro', 'Dados incompletos para o agendamento.', 'error');
         return;
       }
 
-      // CORREÇÃO: Garantir que pacienteId seja string (UUID)
-      const pacienteId = typeof this.usuario.id === 'number'
-        ? this.generateDeterministicUUID(this.usuario.id)
-        : this.usuario.id;
+      const existeConsulta = this.verificarConsultaExistente(especialidade.id);
+      if (existeConsulta) {
+        return;
+      }
 
       const agendamento: Agendamento = {
         paciente: this.usuario.nome,
-        pacienteId: pacienteId, // AGORA É UUID string
+        pacienteId: this.usuario.id.toString(),
         medico: medico.nome,
-        medicoId: medico.id, // UUID
+        medicoId: medico.id,
         especialidade: especialidade.nome,
-        especialidadeId: especialidade.id, // UUID
+        especialidadeId: especialidade.id,
         local: medico.local,
         data: formValue.data,
         hora: formValue.hora,
@@ -242,24 +307,51 @@ export class AgendaFormComponent implements OnInit {
   }
 
   private confirmarAgendamento(agendamento: Agendamento): void {
+    let htmlContent = `
+      <div class="text-start">
+        <p><strong>Paciente:</strong> ${agendamento.paciente}</p>
+        <p><strong>Médico:</strong> ${agendamento.medico}</p>
+        <p><strong>Especialidade:</strong> ${agendamento.especialidade}</p>
+        <p><strong>Local:</strong> ${agendamento.local}</p>
+        <p><strong>Data:</strong> ${this.formatarDataExibicao(
+          agendamento.data
+        )}</p>
+        <p><strong>Horário:</strong> ${agendamento.hora}</p>
+    `;
+
+    // NOVO: Mostrar consultas existentes se houver
+    if (this.consultasAtivas.length > 0) {
+      htmlContent += `
+        <div class="mt-3 p-2 border border-warning rounded">
+          <p class="text-warning mb-1"><strong>Suas consultas ativas:</strong></p>
+          ${this.consultasAtivas
+            .map(
+              (consulta) =>
+                `<p class="mb-0 small">• ${
+                  consulta.especialidade
+                } - ${this.formatarDataExibicao(consulta.data)} ${
+                  consulta.hora
+                }</p>`
+            )
+            .join('')}
+        </div>
+      `;
+    }
+
+    htmlContent += `</div>`;
+
     Swal.fire({
       title: 'Confirmar Agendamento',
-      html: `
-        <div class="text-start">
-          <p><strong>Paciente:</strong> ${agendamento.paciente}</p>
-          <p><strong>Médico:</strong> ${agendamento.medico}</p>
-          <p><strong>Especialidade:</strong> ${agendamento.especialidade}</p>
-          <p><strong>Local:</strong> ${agendamento.local}</p>
-          <p><strong>Data:</strong> ${this.formatarDataExibicao(
-            agendamento.data
-          )}</p>
-          <p><strong>Horário:</strong> ${agendamento.hora}</p>
-        </div>
-      `,
+      html: htmlContent,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Confirmar',
       cancelButtonText: 'Cancelar',
+      customClass: {
+        confirmButton: 'btn btn-primary',
+        cancelButton: 'btn btn-outline-secondary',
+        popup: 'swal2-border-radius',
+      },
     }).then((result) => {
       if (result.isConfirmed) {
         this.schedulingService.criarAgendamento(agendamento).subscribe({
@@ -270,16 +362,22 @@ export class AgendaFormComponent implements OnInit {
               icon: 'success',
               confirmButtonText: 'OK',
             }).then(() => {
-              this.router.navigate(['/dashboard-paciente/consultas']);
+              this.router.navigate(['/paciente/consultas']);
             });
           },
-          error: (erro) => {
-            console.error('Erro ao criar agendamento', erro);
-            Swal.fire(
-              'Erro',
-              'Não foi possível agendar a consulta. Tente novamente.',
-              'error'
-            );
+          error: (err) => {
+            console.error('Erro ao criar agendamento', err);
+
+            let mensagemErro =
+              'Não foi possível agendar a consulta. Tente novamente.';
+
+            if (err.message?.includes('já possui uma consulta agendada')) {
+              mensagemErro = err.message;
+              // Recarregar consultas ativas para atualizar a lista
+              this.carregarConsultasAtivas();
+            }
+
+            Swal.fire('Erro', mensagemErro, 'error');
           },
         });
       }
