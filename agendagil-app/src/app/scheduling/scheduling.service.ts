@@ -79,41 +79,62 @@ export class SchedulingService {
   }
 
   criarAgendamento(agendamento: Agendamento): Observable<Agendamento> {
-
     return from(this.supabaseService.getCurrentUserId()).pipe(
       switchMap((pacienteId) => {
         if (!pacienteId) {
           throw new Error('Usuário não autenticado');
         }
 
-        return this.verificarAgendamentoExistente(pacienteId, agendamento.especialidadeId).pipe(
+        return this.verificarAgendamentoExistente(
+          pacienteId,
+          agendamento.especialidadeId
+        ).pipe(
           switchMap((jaExisteAgendamento) => {
             if (jaExisteAgendamento) {
-              throw new Error(`Você já possui uma consulta agendada para ${agendamento.especialidade}. Cancele a consulta existente antes de agendar uma nova.`);
+              throw new Error(
+                `Você já possui uma consulta agendada para ${agendamento.especialidade}. Cancele a consulta existente antes de agendar uma nova.`
+              );
             }
 
-            const consultaSupabase = {
-              paciente: agendamento.paciente,
-              paciente_id: pacienteId,
-              medico: agendamento.medico,
-              medico_id: this.ensureUUID(agendamento.medicoId),
-              especialidade: agendamento.especialidade,
-              especialidade_id: this.ensureUUID(agendamento.especialidadeId),
-              local: agendamento.local,
-              data: agendamento.data,
-              hora: agendamento.hora,
-              status: agendamento.status,
-              criado_em: new Date().toISOString(),
-              atualizado_em: new Date().toISOString(),
-            };
+            // NOVA VALIDAÇÃO: Verificar se o médico já está ocupado no horário
+            return this.verificarMedicoOcupado(
+              agendamento.medicoId,
+              agendamento.data,
+              agendamento.hora
+            ).pipe(
+              switchMap((medicoOcupado) => {
+                if (medicoOcupado) {
+                  throw new Error(
+                    `O médico ${agendamento.medico} já possui uma consulta agendada para ${agendamento.data} às ${agendamento.hora}. Por favor, escolha outro horário.`
+                  );
+                }
 
-            return from(
-              this.supabaseService
-                .getClient()
-                .from('consultas')
-                .insert([consultaSupabase])
-                .select()
-                .single()
+                const consultaSupabase = {
+                  paciente: agendamento.paciente,
+                  paciente_id: pacienteId,
+                  medico: agendamento.medico,
+                  medico_id: this.ensureUUID(agendamento.medicoId),
+                  especialidade: agendamento.especialidade,
+                  especialidade_id: this.ensureUUID(
+                    agendamento.especialidadeId
+                  ),
+                  local: agendamento.local,
+                  data: agendamento.data,
+                  hora: agendamento.hora,
+                  status: agendamento.status,
+                  criado_em: new Date().toISOString(),
+                  atualizado_em: new Date().toISOString(),
+                };
+
+                return from(
+                  this.supabaseService
+                    .getClient()
+                    .from('consultas')
+                    .insert([consultaSupabase])
+                    .select()
+                    .single()
+                );
+              })
             );
           })
         );
@@ -152,10 +173,53 @@ export class SchedulingService {
     );
   }
 
-  private verificarAgendamentoExistente(pacienteId: string, especialidadeId: string): Observable<boolean> {
-
+  // NOVO MÉTODO: Verificar se o médico está ocupado no horário
+  private verificarMedicoOcupado(
+    medicoId: string,
+    data: string,
+    hora: string
+  ): Observable<boolean> {
     return from(
-      this.supabaseService.getClient()
+      this.supabaseService
+        .getClient()
+        .from('consultas')
+        .select('id')
+        .eq('medico_id', medicoId)
+        .eq('data', data)
+        .eq('hora', hora)
+        .in('status', [1, 2]) // Status: Agendada (1) ou Confirmada (2)
+        .single()
+    ).pipe(
+      map((result: any) => {
+        if (result.error) {
+          // Se não encontrar registro, significa que o médico está livre
+          if (result.error.code === 'PGRST116') {
+            return false;
+          }
+          console.error(
+            'Erro ao verificar disponibilidade do médico:',
+            result.error
+          );
+          return false; // Em caso de erro, permite o agendamento (fail-open)
+        }
+
+        // Se encontrou um registro, médico está ocupado
+        return true;
+      }),
+      catchError((error) => {
+        console.error('Erro ao verificar disponibilidade do médico:', error);
+        return of(false); // Em caso de erro, permite o agendamento
+      })
+    );
+  }
+
+  private verificarAgendamentoExistente(
+    pacienteId: string,
+    especialidadeId: string
+  ): Observable<boolean> {
+    return from(
+      this.supabaseService
+        .getClient()
         .from('consultas')
         .select('id, especialidade, status')
         .eq('paciente_id', pacienteId)
@@ -164,7 +228,10 @@ export class SchedulingService {
     ).pipe(
       map((result: any) => {
         if (result.error) {
-          console.error('Erro ao verificar agendamentos existentes:', result.error);
+          console.error(
+            'Erro ao verificar agendamentos existentes:',
+            result.error
+          );
           return false; // Em caso de erro, permite o agendamento
         }
 
@@ -187,7 +254,8 @@ export class SchedulingService {
         }
 
         return from(
-          this.supabaseService.getClient()
+          this.supabaseService
+            .getClient()
             .from('consultas')
             .select('id, especialidade, data, hora, status')
             .eq('paciente_id', pacienteId)
@@ -206,7 +274,6 @@ export class SchedulingService {
   }
 
   private ensureUUID(id: string): string {
-
     if (this.isValidUUID(id)) {
       return id;
     }
@@ -238,7 +305,6 @@ export class SchedulingService {
   }
 
   getHorariosDisponiveis(medicoId: string, data: string): Observable<string[]> {
-
     if (!medicoId || !data) {
       console.error('Parâmetros inválidos:', { medicoId, data });
       return of(this.getHorariosPadrao());
@@ -248,29 +314,42 @@ export class SchedulingService {
       this.supabaseService
         .getClient()
         .from('disponibilidades_medicos')
-        .select('horarios_disponiveis, horarios_ocupados')
+        .select('horarios_disponiveis')
         .eq('medico_id', medicoId)
         .eq('data', data)
         .single()
     ).pipe(
-      map((result: any) => {
-        if (result.error) {
-          console.error('Erro ao buscar disponibilidade:', result.error);
-          return this.getHorariosPadrao();
+      switchMap((disponibilidadeResult: any) => {
+        let horariosDisponiveis = this.getHorariosPadrao();
+
+        if (disponibilidadeResult.data) {
+          horariosDisponiveis =
+            disponibilidadeResult.data.horarios_disponiveis ||
+            horariosDisponiveis;
         }
 
-        if (!result.data) {
-          return this.getHorariosPadrao();
-        }
+        // Buscar horários já ocupados pelo médico
+        return from(
+          this.supabaseService
+            .getClient()
+            .from('consultas')
+            .select('hora')
+            .eq('medico_id', medicoId)
+            .eq('data', data)
+            .in('status', [1, 2]) // Status: Agendada (1) ou Confirmada (2)
+        ).pipe(
+          map((consultasResult: any) => {
+            const horariosOcupados =
+              consultasResult.data?.map((consulta: any) => consulta.hora) || [];
 
-        const horariosDisponiveis = result.data.horarios_disponiveis || [];
-        const horariosOcupados = result.data.horarios_ocupados || [];
+            // Filtrar horários disponíveis removendo os ocupados
+            const horariosLivres = horariosDisponiveis.filter(
+              (horario: string) => !horariosOcupados.includes(horario)
+            );
 
-        const horariosLivres = horariosDisponiveis.filter(
-          (horario: string) => !horariosOcupados.includes(horario)
+            return horariosLivres;
+          })
         );
-
-        return horariosLivres;
       }),
       catchError((error) => {
         console.error('Erro ao carregar horários disponíveis:', error);

@@ -135,7 +135,6 @@ export class AgendaFormComponent implements OnInit {
     this.agendamentoForm
       .get('especialidadeId')
       ?.valueChanges.subscribe((especialidadeId) => {
-
         if (especialidadeId) {
           const existeConsulta =
             this.verificarConsultaExistente(especialidadeId);
@@ -232,7 +231,6 @@ export class AgendaFormComponent implements OnInit {
   }
 
   onSubmit(): void {
-
     if (this.agendamentoForm.valid && this.usuario) {
       const formValue = this.agendamentoForm.value;
       const medico = this.getMedicoSelecionado();
@@ -275,33 +273,33 @@ export class AgendaFormComponent implements OnInit {
 
   private confirmarAgendamento(agendamento: Agendamento): void {
     let htmlContent = `
-      <div class="text-start">
-        <p><strong>Paciente:</strong> ${agendamento.paciente}</p>
-        <p><strong>Médico:</strong> ${agendamento.medico}</p>
-        <p><strong>Especialidade:</strong> ${agendamento.especialidade}</p>
-        <p><strong>Local:</strong> ${agendamento.local}</p>
-        <p><strong>Data:</strong> ${this.formatarDataExibicao(
-          agendamento.data
-        )}</p>
-        <p><strong>Horário:</strong> ${agendamento.hora}</p>
-    `;
+    <div class="text-start">
+      <p><strong>Paciente:</strong> ${agendamento.paciente}</p>
+      <p><strong>Médico:</strong> ${agendamento.medico}</p>
+      <p><strong>Especialidade:</strong> ${agendamento.especialidade}</p>
+      <p><strong>Local:</strong> ${agendamento.local}</p>
+      <p><strong>Data:</strong> ${this.formatarDataExibicao(
+        agendamento.data
+      )}</p>
+      <p><strong>Horário:</strong> ${agendamento.hora}</p>
+  `;
 
     if (this.consultasAtivas.length > 0) {
       htmlContent += `
-        <div class="mt-3 p-2 border border-warning rounded">
-          <p class="text-warning mb-1"><strong>Suas consultas ativas:</strong></p>
-          ${this.consultasAtivas
-            .map(
-              (consulta) =>
-                `<p class="mb-0 small">• ${
-                  consulta.especialidade
-                } - ${this.formatarDataExibicao(consulta.data)} ${
-                  consulta.hora
-                }</p>`
-            )
-            .join('')}
-        </div>
-      `;
+      <div class="mt-3 p-2 border border-warning rounded">
+        <p class="text-warning mb-1"><strong>Suas consultas ativas:</strong></p>
+        ${this.consultasAtivas
+          .map(
+            (consulta) =>
+              `<p class="mb-0 small">• ${
+                consulta.especialidade
+              } - ${this.formatarDataExibicao(consulta.data)} ${
+                consulta.hora
+              }</p>`
+          )
+          .join('')}
+      </div>
+    `;
     }
 
     htmlContent += `</div>`;
@@ -339,8 +337,19 @@ export class AgendaFormComponent implements OnInit {
 
             if (err.message?.includes('já possui uma consulta agendada')) {
               mensagemErro = err.message;
-
               this.carregarConsultasAtivas();
+            } else if (
+              err.message?.includes('já possui uma consulta agendada para')
+            ) {
+              // NOVO: Tratar erro de médico ocupado
+              mensagemErro = err.message;
+
+              // Recarregar horários disponíveis para mostrar opções atualizadas
+              const medicoId = this.agendamentoForm.get('medicoId')?.value;
+              const data = this.agendamentoForm.get('data')?.value;
+              if (medicoId && data) {
+                this.carregarHorarios(medicoId, data);
+              }
             }
 
             Swal.fire('Erro', mensagemErro, 'error');
