@@ -96,51 +96,51 @@ export class SchedulingService {
               );
             }
 
-            // NOVA VALIDAÇÃO: Verificar se o médico já está ocupado no horário
-            return this.verificarMedicoOcupado(
-              agendamento.medicoId,
-              agendamento.data,
-              agendamento.hora
-            ).pipe(
-              switchMap((medicoOcupado) => {
-                if (medicoOcupado) {
-                  throw new Error(
-                    `O médico ${agendamento.medico} já possui uma consulta agendada para ${agendamento.data} às ${agendamento.hora}. Por favor, escolha outro horário.`
-                  );
-                }
-
-                const consultaSupabase = {
-                  paciente: agendamento.paciente,
-                  paciente_id: pacienteId,
-                  medico: agendamento.medico,
-                  medico_id: this.ensureUUID(agendamento.medicoId),
-                  especialidade: agendamento.especialidade,
-                  especialidade_id: this.ensureUUID(
-                    agendamento.especialidadeId
-                  ),
-                  local: agendamento.local,
-                  data: agendamento.data,
-                  hora: agendamento.hora,
-                  status: agendamento.status,
-                  criado_em: new Date().toISOString(),
-                  atualizado_em: new Date().toISOString(),
-                };
-
-                return from(
-                  this.supabaseService
-                    .getClient()
-                    .from('consultas')
-                    .insert([consultaSupabase])
-                    .select()
-                    .single()
-                );
-              })
-            );
+            // VALIDAÇÃO ATÔMICA: Tentar inserir diretamente e verificar conflitos
+            return this.tentarAgendamentoAtomico(agendamento, pacienteId);
           })
         );
       }),
+      catchError((error) => {
+        console.error('Erro completo ao criar agendamento:', error);
+        throw error;
+      })
+    );
+  }
+
+  private tentarAgendamentoAtomico(agendamento: Agendamento, pacienteId: string): Observable<Agendamento> {
+    const consultaSupabase = {
+      paciente: agendamento.paciente,
+      paciente_id: pacienteId,
+      medico: agendamento.medico,
+      medico_id: this.ensureUUID(agendamento.medicoId),
+      especialidade: agendamento.especialidade,
+      especialidade_id: this.ensureUUID(agendamento.especialidadeId),
+      local: agendamento.local,
+      data: agendamento.data,
+      hora: agendamento.hora,
+      status: agendamento.status,
+      criado_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+    };
+
+    return from(
+      this.supabaseService
+        .getClient()
+        .from('consultas')
+        .insert([consultaSupabase])
+        .select()
+        .single()
+    ).pipe(
       map((result: any) => {
         if (result.error) {
+          // Verificar se é erro de duplicação (código 23505 = unique_violation)
+          if (result.error.code === '23505') {
+            throw new Error(
+              `O médico ${agendamento.medico} já possui uma consulta agendada para ${this.formatarData(agendamento.data)} às ${agendamento.hora}. Por favor, escolha outro horário.`
+            );
+          }
+
           console.error('Erro ao criar agendamento:', result.error);
           throw result.error;
         }
@@ -149,68 +149,12 @@ export class SchedulingService {
           ...agendamento,
           id: result.data.id,
         };
-      }),
-      catchError((error) => {
-        console.error('Erro completo ao criar agendamento:', error);
-
-        if (
-          error.message?.includes('row-level security') ||
-          error.code === '42501'
-        ) {
-          throw new Error(
-            'Permissão negada. Verifique as políticas de segurança da tabela consultas.'
-          );
-        }
-
-        if (error.message?.includes('invalid input syntax for type uuid')) {
-          throw new Error(
-            'Erro de tipo de dados. Verifique se todos os IDs são UUIDs válidos.'
-          );
-        }
-
-        throw error;
       })
     );
   }
 
-  // NOVO MÉTODO: Verificar se o médico está ocupado no horário
-  private verificarMedicoOcupado(
-    medicoId: string,
-    data: string,
-    hora: string
-  ): Observable<boolean> {
-    return from(
-      this.supabaseService
-        .getClient()
-        .from('consultas')
-        .select('id')
-        .eq('medico_id', medicoId)
-        .eq('data', data)
-        .eq('hora', hora)
-        .in('status', [1, 2]) // Status: Agendada (1) ou Confirmada (2)
-        .single()
-    ).pipe(
-      map((result: any) => {
-        if (result.error) {
-          // Se não encontrar registro, significa que o médico está livre
-          if (result.error.code === 'PGRST116') {
-            return false;
-          }
-          console.error(
-            'Erro ao verificar disponibilidade do médico:',
-            result.error
-          );
-          return false; // Em caso de erro, permite o agendamento (fail-open)
-        }
-
-        // Se encontrou um registro, médico está ocupado
-        return true;
-      }),
-      catchError((error) => {
-        console.error('Erro ao verificar disponibilidade do médico:', error);
-        return of(false); // Em caso de erro, permite o agendamento
-      })
-    );
+  private formatarData(data: string): string {
+    return new Date(data).toLocaleDateString('pt-BR');
   }
 
   private verificarAgendamentoExistente(

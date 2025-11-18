@@ -35,6 +35,7 @@ export class AgendaFormComponent implements OnInit {
   ngOnInit(): void {
     this.usuario = this.authService.getUsuarioLogado();
     this.carregarEspecialidades();
+    this.carregarConsultasAtivas();
     this.observarMudancasForm();
   }
 
@@ -153,6 +154,9 @@ export class AgendaFormComponent implements OnInit {
       const data = this.agendamentoForm.get('data')?.value;
       if (medicoId && data) {
         this.carregarHorarios(medicoId, data);
+      } else {
+        this.horariosDisponiveis = [];
+        this.agendamentoForm.patchValue({ hora: '' });
       }
     });
 
@@ -160,6 +164,9 @@ export class AgendaFormComponent implements OnInit {
       const medicoId = this.agendamentoForm.get('medicoId')?.value;
       if (medicoId && data) {
         this.carregarHorarios(medicoId, data);
+      } else {
+        this.horariosDisponiveis = [];
+        this.agendamentoForm.patchValue({ hora: '' });
       }
     });
   }
@@ -177,23 +184,45 @@ export class AgendaFormComponent implements OnInit {
         const horaAtual = this.agendamentoForm.get('hora')?.value;
         if (horaAtual && !horarios.includes(horaAtual)) {
           this.agendamentoForm.patchValue({ hora: '' });
-          Swal.fire(
-            'Horário Indisponível',
-            'O horário selecionado não está mais disponível. Por favor, escolha outro horário.',
-            'warning'
-          );
-        } else if (horarios.length === 0) {
-          Swal.fire(
-            'Info',
-            'Não há horários disponíveis para esta data.',
-            'info'
-          );
+          Swal.fire({
+            title: 'Horário Indisponível',
+            text: 'O horário selecionado foi reservado por outro paciente. Escolha outro horário disponível.',
+            icon: 'warning',
+            confirmButtonText: 'OK',
+            customClass: {
+              confirmButton: 'btn btn-warning',
+              popup: 'swal2-border-radius',
+            },
+          });
+        }
+
+        if (horarios.length === 0) {
+          Swal.fire({
+            title: 'Sem Horários',
+            text: 'Não há horários disponíveis para este médico na data selecionada.',
+            icon: 'info',
+            confirmButtonText: 'OK',
+            customClass: {
+              confirmButton: 'btn btn-info',
+              popup: 'swal2-border-radius',
+            },
+          });
         }
       },
       error: (erro) => {
         console.error('Erro ao carregar horários', erro);
         this.carregandoHorarios = false;
         this.horariosDisponiveis = [];
+        Swal.fire({
+          title: 'Erro',
+          text: 'Não foi possível carregar os horários disponíveis.',
+          icon: 'error',
+          confirmButtonText: 'OK',
+          customClass: {
+            confirmButton: 'btn btn-danger',
+            popup: 'swal2-border-radius',
+          },
+        });
       },
     });
   }
@@ -247,12 +276,40 @@ export class AgendaFormComponent implements OnInit {
       const especialidade = this.getEspecialidadeSelecionada();
 
       if (!medico || !especialidade) {
-        Swal.fire('Erro', 'Dados incompletos para o agendamento.', 'error');
+        Swal.fire({
+          title: 'Erro',
+          text: 'Dados incompletos para o agendamento.',
+          icon: 'error',
+          confirmButtonText: 'OK',
+          customClass: {
+            confirmButton: 'btn btn-danger',
+            popup: 'swal2-border-radius',
+          },
+        });
         return;
       }
 
       const existeConsulta = this.verificarConsultaExistente(especialidade.id);
       if (existeConsulta) {
+        return;
+      }
+
+      // Verificar se o horário ainda está disponível
+      const horaSelecionada = this.agendamentoForm.get('hora')?.value;
+      if (!this.horariosDisponiveis.includes(horaSelecionada)) {
+        Swal.fire({
+          title: 'Horário Indisponível',
+          text: 'O horário selecionado não está mais disponível. Por favor, escolha outro horário.',
+          icon: 'warning',
+          confirmButtonText: 'OK',
+          customClass: {
+            confirmButton: 'btn btn-warning',
+            popup: 'swal2-border-radius',
+          },
+        }).then(() => {
+          // Recarregar horários
+          this.carregarHorarios(medico.id, formValue.data);
+        });
         return;
       }
 
@@ -272,44 +329,48 @@ export class AgendaFormComponent implements OnInit {
       this.confirmarAgendamento(agendamento);
     } else {
       this.marcarCamposComoSujos();
-      Swal.fire('Atenção', 'Preencha todos os campos obrigatórios.', 'warning');
+      Swal.fire({
+        title: 'Atenção',
+        text: 'Preencha todos os campos obrigatórios.',
+        icon: 'warning',
+        confirmButtonText: 'OK',
+        customClass: {
+          confirmButton: 'btn btn-warning',
+          popup: 'swal2-border-radius',
+        },
+      });
     }
-  }
-
-  private generateDeterministicUUID(numericId: number): string {
-    const hex = numericId.toString(16).padStart(8, '0');
-    return `00000000-0000-4000-8000-${hex.padStart(12, '0')}`;
   }
 
   private confirmarAgendamento(agendamento: Agendamento): void {
     let htmlContent = `
-    <div class="text-start">
-      <p><strong>Paciente:</strong> ${agendamento.paciente}</p>
-      <p><strong>Médico:</strong> ${agendamento.medico}</p>
-      <p><strong>Especialidade:</strong> ${agendamento.especialidade}</p>
-      <p><strong>Local:</strong> ${agendamento.local}</p>
-      <p><strong>Data:</strong> ${this.formatarDataExibicao(
-        agendamento.data
-      )}</p>
-      <p><strong>Horário:</strong> ${agendamento.hora}</p>
-  `;
+      <div class="text-start">
+        <p><strong>Paciente:</strong> ${agendamento.paciente}</p>
+        <p><strong>Médico:</strong> ${agendamento.medico}</p>
+        <p><strong>Especialidade:</strong> ${agendamento.especialidade}</p>
+        <p><strong>Local:</strong> ${agendamento.local}</p>
+        <p><strong>Data:</strong> ${this.formatarDataExibicao(
+          agendamento.data
+        )}</p>
+        <p><strong>Horário:</strong> ${agendamento.hora}</p>
+    `;
 
     if (this.consultasAtivas.length > 0) {
       htmlContent += `
-      <div class="mt-3 p-2 border border-warning rounded">
-        <p class="text-warning mb-1"><strong>Suas consultas ativas:</strong></p>
-        ${this.consultasAtivas
-          .map(
-            (consulta) =>
-              `<p class="mb-0 small">• ${
-                consulta.especialidade
-              } - ${this.formatarDataExibicao(consulta.data)} ${
-                consulta.hora
-              }</p>`
-          )
-          .join('')}
-      </div>
-    `;
+        <div class="mt-3 p-2 border border-warning rounded">
+          <p class="text-warning mb-1"><strong>Suas consultas ativas:</strong></p>
+          ${this.consultasAtivas
+            .map(
+              (consulta) =>
+                `<p class="mb-0 small">• ${
+                  consulta.especialidade
+                } - ${this.formatarDataExibicao(consulta.data)} ${
+                  consulta.hora
+                }</p>`
+            )
+            .join('')}
+        </div>
+      `;
     }
 
     htmlContent += `</div>`;
@@ -326,6 +387,7 @@ export class AgendaFormComponent implements OnInit {
         cancelButton: 'btn btn-outline-secondary',
         popup: 'swal2-border-radius',
       },
+      reverseButtons: true,
     }).then((result) => {
       if (result.isConfirmed) {
         this.schedulingService.criarAgendamento(agendamento).subscribe({
@@ -335,6 +397,10 @@ export class AgendaFormComponent implements OnInit {
               text: 'Sua consulta foi agendada com sucesso.',
               icon: 'success',
               confirmButtonText: 'OK',
+              customClass: {
+                confirmButton: 'btn btn-success',
+                popup: 'swal2-border-radius',
+              },
             }).then(() => {
               this.router.navigate(['/dashboard-paciente/consultas']);
             });
@@ -342,16 +408,13 @@ export class AgendaFormComponent implements OnInit {
           error: (err) => {
             console.error('Erro ao criar agendamento', err);
 
-            let mensagemErro =
-              'Não foi possível agendar a consulta. Tente novamente.';
+            let mensagemErro = 'Não foi possível agendar a consulta. Tente novamente.';
 
             if (err.message?.includes('já possui uma consulta agendada')) {
               mensagemErro = err.message;
               this.carregarConsultasAtivas();
-            } else if (
-              err.message?.includes('já possui uma consulta agendada para')
-            ) {
-              // NOVO: Tratar erro de médico ocupado
+            } else if (err.message?.includes('já possui uma consulta agendada para')) {
+              // Tratar erro de médico ocupado
               mensagemErro = err.message;
 
               // Recarregar horários disponíveis para mostrar opções atualizadas
@@ -362,7 +425,16 @@ export class AgendaFormComponent implements OnInit {
               }
             }
 
-            Swal.fire('Erro', mensagemErro, 'error');
+            Swal.fire({
+              title: 'Erro',
+              text: mensagemErro,
+              icon: 'error',
+              confirmButtonText: 'OK',
+              customClass: {
+                confirmButton: 'btn btn-danger',
+                popup: 'swal2-border-radius',
+              },
+            });
           },
         });
       }
@@ -390,5 +462,19 @@ export class AgendaFormComponent implements OnInit {
       return 'A data não pode ser anterior ao dia de hoje.';
     }
     return '';
+  }
+
+  // Método para limpar o formulário
+  limparFormulario(): void {
+    this.agendamentoForm.reset();
+    this.medicosFiltrados = [];
+    this.horariosDisponiveis = [];
+  }
+
+  // Método para verificar se o formulário pode ser enviado
+  podeEnviar(): boolean {
+    return this.agendamentoForm.valid &&
+           this.agendamentoForm.get('hora')?.value &&
+           this.horariosDisponiveis.includes(this.agendamentoForm.get('hora')?.value);
   }
 }
