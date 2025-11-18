@@ -39,16 +39,6 @@ export class ConsultaService {
         }
 
         console.log('Consultas encontradas:', result.data?.length || 0);
-
-        // Log para debug
-        if (result.data && result.data.length > 0) {
-          console.log('Primeira consulta:', {
-            id: result.data[0].id,
-            paciente_id: result.data[0].paciente_id,
-            paciente: result.data[0].paciente,
-          });
-        }
-
         return result.data.map((consulta: any) =>
           ModelConverter.fromSupabaseConsulta(consulta)
         );
@@ -61,14 +51,22 @@ export class ConsultaService {
   }
 
   getConsultaPorId(id: string): Observable<Consulta> {
-    return from(
-      this.supabaseService
-        .getClient()
-        .from('consultas')
-        .select('*')
-        .eq('id', id) // REMOVER .toString() - já é string
-        .single()
-    ).pipe(
+    return from(this.supabaseService.getCurrentUser()).pipe(
+      switchMap((user) => {
+        if (!user) {
+          throw new Error('Usuário não autenticado');
+        }
+
+        return from(
+          this.supabaseService
+            .getClient()
+            .from('consultas')
+            .select('*')
+            .eq('id', id)
+            .eq('paciente_id', user.id) // FILTRO DE SEGURANÇA
+            .single()
+        );
+      }),
       map((result: any) => {
         if (result.error) throw result.error;
         return ModelConverter.fromSupabaseConsulta(result.data);
@@ -77,21 +75,31 @@ export class ConsultaService {
   }
 
   criarConsulta(consulta: Consulta): Observable<Consulta> {
-    const consultaSupabase = ModelConverter.toSupabaseConsulta(consulta);
+    return from(this.supabaseService.getCurrentUser()).pipe(
+      switchMap((user) => {
+        if (!user) {
+          throw new Error('Usuário não autenticado');
+        }
 
-    // Garantir que o ID seja uma string válida para UUID
-    if (!consultaSupabase.id || this.isNumber(consultaSupabase.id)) {
-      consultaSupabase.id = this.generateUUID();
-    }
+        const consultaSupabase = ModelConverter.toSupabaseConsulta(consulta);
 
-    return from(
-      this.supabaseService
-        .getClient()
-        .from('consultas')
-        .insert([consultaSupabase])
-        .select()
-        .single()
-    ).pipe(
+        // Garantir que o paciente_id seja o usuário autenticado
+        consultaSupabase.paciente_id = user.id;
+
+        // Garantir que o ID seja uma string válida para UUID
+        if (!consultaSupabase.id || this.isNumber(consultaSupabase.id)) {
+          consultaSupabase.id = this.generateUUID();
+        }
+
+        return from(
+          this.supabaseService
+            .getClient()
+            .from('consultas')
+            .insert([consultaSupabase])
+            .select()
+            .single()
+        );
+      }),
       map((result: any) => {
         if (result.error) throw result.error;
         return ModelConverter.fromSupabaseConsulta(result.data);
@@ -100,32 +108,139 @@ export class ConsultaService {
   }
 
   atualizarConsulta(id: string, consulta: Consulta): Observable<Consulta> {
-    const consultaSupabase = ModelConverter.toSupabaseConsulta(consulta);
+    return from(this.supabaseService.getCurrentUser()).pipe(
+      switchMap((user) => {
+        if (!user) {
+          throw new Error('Usuário não autenticado');
+        }
 
-    // Garantir que o ID da consulta seja consistente
-    consultaSupabase.id = id;
+        const consultaSupabase = ModelConverter.toSupabaseConsulta(consulta);
 
-    return from(
-      this.supabaseService
-        .getClient()
-        .from('consultas')
-        .update(consultaSupabase)
-        .eq('id', id) // REMOVER .toString() - já é string
-        .select()
-        .single()
-    ).pipe(
+        // Garantir que o ID da consulta seja consistente
+        consultaSupabase.id = id;
+        // Garantir que o paciente_id seja mantido
+        consultaSupabase.paciente_id = user.id;
+
+        console.log('Atualizando consulta:', consultaSupabase);
+
+        return from(
+          this.supabaseService
+            .getClient()
+            .from('consultas')
+            .update(consultaSupabase)
+            .eq('id', id)
+            .eq('paciente_id', user.id) // FILTRO DE SEGURANÇA CRÍTICO
+            .select()
+            .single()
+        );
+      }),
       map((result: any) => {
-        if (result.error) throw result.error;
+        if (result.error) {
+          console.error('Erro ao atualizar consulta:', result.error);
+          throw result.error;
+        }
         return ModelConverter.fromSupabaseConsulta(result.data);
+      }),
+      catchError((error) => {
+        console.error('Erro completo ao atualizar consulta:', error);
+        throw error;
+      })
+    );
+  }
+
+  // MÉTODO ESPECÍFICO PARA CANCELAR CONSULTA
+  cancelarConsulta(id: string): Observable<Consulta> {
+    return from(this.supabaseService.getCurrentUser()).pipe(
+      switchMap((user) => {
+        if (!user) {
+          throw new Error('Usuário não autenticado');
+        }
+
+        console.log('Cancelando consulta ID:', id, 'para usuário:', user.id);
+
+        return from(
+          this.supabaseService
+            .getClient()
+            .from('consultas')
+            .update({
+              status: 0, // StatusConsulta.Cancelada
+              atualizado_em: new Date().toISOString()
+            })
+            .eq('id', id)
+            .eq('paciente_id', user.id) // FILTRO DE SEGURANÇA
+            .select()
+            .single()
+        );
+      }),
+      map((result: any) => {
+        if (result.error) {
+          console.error('Erro ao cancelar consulta:', result.error);
+          throw result.error;
+        }
+        return ModelConverter.fromSupabaseConsulta(result.data);
+      }),
+      catchError((error) => {
+        console.error('Erro completo ao cancelar consulta:', error);
+        throw error;
+      })
+    );
+  }
+
+  // MÉTODO ESPECÍFICO PARA REAGENDAR CONSULTA
+  reagendarConsulta(id: string, novaData: string, novaHora: string): Observable<Consulta> {
+    return from(this.supabaseService.getCurrentUser()).pipe(
+      switchMap((user) => {
+        if (!user) {
+          throw new Error('Usuário não autenticado');
+        }
+
+        console.log('Reagendando consulta ID:', id, 'para:', novaData, novaHora);
+
+        return from(
+          this.supabaseService
+            .getClient()
+            .from('consultas')
+            .update({
+              data: novaData,
+              hora: novaHora,
+              atualizado_em: new Date().toISOString()
+            })
+            .eq('id', id)
+            .eq('paciente_id', user.id) // FILTRO DE SEGURANÇA
+            .select()
+            .single()
+        );
+      }),
+      map((result: any) => {
+        if (result.error) {
+          console.error('Erro ao reagendar consulta:', result.error);
+          throw result.error;
+        }
+        return ModelConverter.fromSupabaseConsulta(result.data);
+      }),
+      catchError((error) => {
+        console.error('Erro completo ao reagendar consulta:', error);
+        throw error;
       })
     );
   }
 
   deletarConsulta(id: string): Observable<void> {
-    // MUDANÇA: number → string
-    return from(
-      this.supabaseService.getClient().from('consultas').delete().eq('id', id) // REMOVER .toString() - já é string
-    ).pipe(
+    return from(this.supabaseService.getCurrentUser()).pipe(
+      switchMap((user) => {
+        if (!user) {
+          throw new Error('Usuário não autenticado');
+        }
+
+        return from(
+          this.supabaseService
+            .getClient()
+            .from('consultas')
+            .delete()
+            .eq('id', id)
+            .eq('paciente_id', user.id) // FILTRO DE SEGURANÇA
+        );
+      }),
       map((result: any) => {
         if (result.error) throw result.error;
         return;

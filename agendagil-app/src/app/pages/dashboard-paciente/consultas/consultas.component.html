@@ -15,7 +15,7 @@
         style="border-width: 2px; border-radius: 12px"
       >
         <div class="d-flex w-100 justify-content-between align-items-center">
-          <div>
+          <div class="flex-grow-1">
             <h5 class="mb-1 fw-semibold" style="color: #1b4f72">
               {{ consulta.medico }}
               <small class="text-muted">({{ consulta.especialidade }})</small>
@@ -23,56 +23,143 @@
             <p class="mb-1 text-muted">
               <i class="bi bi-geo-alt me-1"></i> {{ consulta.local }}
             </p>
-          </div>
-          <div class="text-end">
-            <small class="text-muted d-block">
+            <p class="mb-1 text-muted">
               <i class="bi bi-calendar-event me-1"></i>
               {{ formatarDataHora(consulta.data, consulta.hora) }}
-            </small>
+            </p>
+          </div>
+          <div class="text-end ms-3">
             <span
-              class="badge mt-1"
+              class="badge mt-1 fs-6 px-3 py-2"
               [ngClass]="{
                 'bg-success': consulta.status === StatusConsulta.Confirmada,
-                'bg-warning text-dark':
-                  consulta.status === StatusConsulta.Agendada,
+                'bg-warning text-dark': consulta.status === StatusConsulta.Agendada,
                 'bg-danger': consulta.status === StatusConsulta.Cancelada,
                 'bg-secondary': consulta.status === StatusConsulta.Concluida
               }"
             >
-              {{ StatusConsulta[consulta.status] }}
+              {{ getStatusText(consulta.status) }}
             </span>
           </div>
         </div>
 
-        <div class="mt-3 text-end">
-          <button
-            *ngIf="
-              consulta.status === StatusConsulta.Agendada ||
-              consulta.status === StatusConsulta.Confirmada
-            "
-            class="btn btn-outline-secondary btn-sm me-2"
-            (click)="reagendarConsulta(consulta)"
-          >
-            <i class="bi bi-calendar-plus me-1"></i> Reagendar
-          </button>
-          <button
-            *ngIf="
-              consulta.status === StatusConsulta.Agendada ||
-              consulta.status === StatusConsulta.Confirmada
-            "
-            class="btn btn-outline-danger btn-sm"
-            (click)="cancelarConsulta(consulta.id!)"
-          >
-            <i class="bi bi-x-circle me-1"></i> Cancelar
-          </button>
+        <!-- Ações da consulta -->
+        <div class="mt-3 pt-3 border-top">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="text-muted small">
+              <i class="bi bi-info-circle me-1"></i>
+              <span *ngIf="consulta.status === StatusConsulta.Agendada">
+                Consulta agendada - Aguardando confirmação
+              </span>
+              <span *ngIf="consulta.status === StatusConsulta.Confirmada">
+                Consulta confirmada - Comparecer no local
+              </span>
+              <span *ngIf="consulta.status === StatusConsulta.Cancelada">
+                Consulta cancelada
+              </span>
+              <span *ngIf="consulta.status === StatusConsulta.Concluida">
+                Consulta realizada
+              </span>
+            </div>
+
+            <div class="btn-group" role="group">
+              <!-- Botão Reagendar -->
+              <button
+                *ngIf="podeReagendar(consulta)"
+                class="btn btn-outline-primary btn-sm"
+                (click)="reagendarConsulta(consulta)"
+                [title]="'Reagendar consulta com ' + consulta.medico"
+              >
+                <i class="bi bi-calendar-plus me-1"></i> Reagendar
+              </button>
+
+              <!-- Botão Cancelar -->
+              <button
+                *ngIf="podeCancelar(consulta)"
+                class="btn btn-outline-danger btn-sm ms-2"
+                (click)="cancelarConsulta(consulta.id!)"
+                [title]="'Cancelar consulta com ' + consulta.medico"
+              >
+                <i class="bi bi-x-circle me-1"></i> Cancelar
+              </button>
+
+              <!-- Indicador quando não há ações disponíveis -->
+              <span
+                *ngIf="!podeCancelar(consulta) && !podeReagendar(consulta)"
+                class="text-muted small align-self-center"
+              >
+                Nenhuma ação disponível
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Informações adicionais para consultas canceladas ou concluídas -->
+        <div
+          *ngIf="consulta.status === StatusConsulta.Cancelada || consulta.status === StatusConsulta.Concluida"
+          class="mt-2 pt-2 border-top"
+        >
+          <small class="text-muted">
+            <i class="bi bi-clock-history me-1"></i>
+            <span *ngIf="consulta.status === StatusConsulta.Cancelada">
+              Esta consulta foi cancelada
+            </span>
+            <span *ngIf="consulta.status === StatusConsulta.Concluida">
+              Esta consulta foi realizada
+            </span>
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mt-4">
+      <div class="col-md-3">
+        <div class="card text-center bg-light">
+          <div class="card-body py-2">
+            <h6 class="card-title text-primary mb-0">Total</h6>
+            <p class="card-text fw-bold fs-5 mb-0">{{ consultas.length }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center bg-light">
+          <div class="card-body py-2">
+            <h6 class="card-title text-warning mb-0">Agendadas</h6>
+            <p class="card-text fw-bold fs-5 mb-0">{{ getTotalPorStatus(StatusConsulta.Agendada) }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center bg-light">
+          <div class="card-body py-2">
+            <h6 class="card-title text-success mb-0">Confirmadas</h6>
+            <p class="card-text fw-bold fs-5 mb-0">{{ getTotalPorStatus(StatusConsulta.Confirmada) }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center bg-light">
+          <div class="card-body py-2">
+            <h6 class="card-title text-danger mb-0">Canceladas</h6>
+            <p class="card-text fw-bold fs-5 mb-0">{{ getTotalPorStatus(StatusConsulta.Cancelada) }}</p>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <ng-template #semConsultas>
-    <div class="alert alert-info text-center mt-4" role="alert">
-      Você não possui consultas agendadas no momento.
+    <div class="text-center mt-5">
+      <div class="alert alert-info mx-auto" style="max-width: 500px;" role="alert">
+        <i class="bi bi-calendar-x display-4 text-info mb-3 d-block"></i>
+        <h5 class="alert-heading">Nenhuma consulta agendada</h5>
+        <p class="mb-0">Você não possui consultas agendadas no momento.</p>
+        <hr>
+        <button class="btn btn-primary mt-2" routerLink="/agendamento">
+          <i class="bi bi-plus-circle me-1"></i> Agendar Nova Consulta
+        </button>
+      </div>
     </div>
   </ng-template>
 </div>

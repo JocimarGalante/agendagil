@@ -1,3 +1,4 @@
+// src/app/consultas/consultas.component.ts
 import { Component, OnInit } from '@angular/core';
 import { Consulta } from '@models/consulta.model';
 import { StatusConsulta } from '@models/status-consulta.model';
@@ -16,34 +17,59 @@ export class ConsultasComponent implements OnInit {
   constructor(private consultaService: ConsultaService) {}
 
   ngOnInit(): void {
+    this.carregarConsultas();
+  }
+
+  carregarConsultas(): void {
     this.consultaService.getConsultas().subscribe({
-      next: (dados) => (this.consultas = dados),
-      error: (erro) => console.error('Erro ao buscar consultas', erro),
+      next: (dados) => {
+        this.consultas = dados;
+        console.log('Consultas carregadas:', this.consultas);
+      },
+      error: (erro) => {
+        console.error('Erro ao buscar consultas', erro);
+        this.mostrarErro('Erro ao carregar consultas');
+      },
     });
   }
 
   formatarDataHora(data: string, hora: string): string {
-    const dateTime = new Date(`${data}T${hora}`);
-    return dateTime.toLocaleString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    try {
+      const dateTime = new Date(`${data}T${hora}`);
+      return dateTime.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      return `${data} ${hora}`;
+    }
   }
 
-  cancelarConsulta(id: string) { // MUDANÇA: number → string
-    const consulta = this.consultas.find((c) => c.id === id); // MUDANÇA: Agora funciona
+  cancelarConsulta(id: string) {
+    const consulta = this.consultas.find((c) => c.id === id);
     if (!consulta) return;
 
     Swal.fire({
       title: 'Cancelar consulta?',
-      text: `Deseja realmente cancelar a consulta com ${consulta.medico}?`,
+      html: `
+        <div class="text-start">
+          <p>Deseja realmente cancelar a consulta com <strong>${
+            consulta.medico
+          }</strong>?</p>
+          <p><strong>Especialidade:</strong> ${consulta.especialidade}</p>
+          <p><strong>Data:</strong> ${this.formatarDataHora(
+            consulta.data,
+            consulta.hora
+          )}</p>
+        </div>
+      `,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: '<strong>Sim</strong>',
-      cancelButtonText: 'Não',
+      confirmButtonText: '<strong>Sim, cancelar</strong>',
+      cancelButtonText: 'Manter consulta',
       buttonsStyling: true,
       customClass: {
         confirmButton: 'btn btn-danger swal2-confirm-custom',
@@ -52,14 +78,13 @@ export class ConsultasComponent implements OnInit {
       },
     }).then((result) => {
       if (result.isConfirmed) {
-        consulta.status = StatusConsulta.Cancelada;
-
-        this.consultaService.atualizarConsulta(id, consulta).subscribe({ // MUDANÇA: id é string
-          next: (consultaAtualizada) => {
+        // Usar o método específico para cancelar
+        this.consultaService.cancelarConsulta(id).subscribe({
+          next: (consultaCancelada) => {
             // Atualiza a lista local para refletir a mudança
-            const index = this.consultas.findIndex((c) => c.id === id); // MUDANÇA: Agora funciona
+            const index = this.consultas.findIndex((c) => c.id === id);
             if (index !== -1) {
-              this.consultas[index] = consultaAtualizada;
+              this.consultas[index] = consultaCancelada;
             }
 
             Swal.fire({
@@ -76,17 +101,9 @@ export class ConsultasComponent implements OnInit {
           },
           error: (err) => {
             console.error('Erro ao cancelar consulta', err);
-            Swal.fire({
-              title: 'Erro',
-              text: 'Não foi possível cancelar a consulta. Tente novamente.',
-              icon: 'error',
-              confirmButtonText: 'OK',
-              buttonsStyling: true,
-              customClass: {
-                confirmButton: 'btn btn-danger swal2-confirm-custom',
-                popup: 'swal2-border-radius',
-              },
-            });
+            this.mostrarErro(
+              'Não foi possível cancelar a consulta. Tente novamente.'
+            );
           },
         });
       }
@@ -94,13 +111,35 @@ export class ConsultasComponent implements OnInit {
   }
 
   reagendarConsulta(consulta: Consulta): void {
+    // Validar se a consulta pode ser reagendada
+    if (
+      consulta.status === StatusConsulta.Cancelada ||
+      consulta.status === StatusConsulta.Concluida
+    ) {
+      this.mostrarErro('Esta consulta não pode ser reagendada.');
+      return;
+    }
+
     Swal.fire({
       title: 'Reagendar Consulta',
-      html:
-        `<input id="novaData" type="date" class="swal2-input" value="${consulta.data}">` +
-        `<input id="novaHora" type="time" class="swal2-input" value="${consulta.hora}">`,
+      html: `
+        <div class="text-start mb-3">
+          <p><strong>Médico:</strong> ${consulta.medico}</p>
+          <p><strong>Especialidade:</strong> ${consulta.especialidade}</p>
+          <p><strong>Data atual:</strong> ${this.formatarDataHora(
+            consulta.data,
+            consulta.hora
+          )}</p>
+        </div>
+        <input id="novaData" type="date" class="swal2-input" value="${
+          consulta.data
+        }" min="${this.getDataMinima()}">
+        <input id="novaHora" type="time" class="swal2-input" value="${
+          consulta.hora
+        }">
+      `,
       showCancelButton: true,
-      confirmButtonText: 'Confirmar',
+      confirmButtonText: 'Confirmar reagendamento',
       cancelButtonText: 'Cancelar',
       focusConfirm: false,
       preConfirm: () => {
@@ -116,6 +155,18 @@ export class ConsultasComponent implements OnInit {
           return;
         }
 
+        // Validar se a data não é no passado
+        const dataSelecionada = new Date(novaData);
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        if (dataSelecionada < hoje) {
+          Swal.showValidationMessage(
+            'A data não pode ser anterior ao dia de hoje.'
+          );
+          return;
+        }
+
         return { novaData, novaHora };
       },
       customClass: {
@@ -126,18 +177,34 @@ export class ConsultasComponent implements OnInit {
       buttonsStyling: false,
     }).then((result) => {
       if (result.isConfirmed && result.value) {
-        // Atualiza localmente
-        consulta.data = result.value.novaData;
-        consulta.hora = result.value.novaHora;
-
-        // Chama serviço para atualizar no backend
+        // Usar o método específico para reagendar
         this.consultaService
-          .atualizarConsulta(consulta.id!, consulta) // MUDANÇA: id é string
+          .reagendarConsulta(
+            consulta.id!,
+            result.value.novaData,
+            result.value.novaHora
+          )
           .subscribe({
-            next: (consultaAtualizada) => {
+            next: (consultaReagendada) => {
+              // Atualiza a lista local
+              const index = this.consultas.findIndex(
+                (c) => c.id === consulta.id
+              );
+              if (index !== -1) {
+                this.consultas[index] = consultaReagendada;
+              }
+
               Swal.fire({
                 title: 'Reagendada!',
-                text: 'A consulta foi atualizada com sucesso.',
+                html: `
+                <div class="text-start">
+                  <p>A consulta foi reagendada com sucesso.</p>
+                  <p><strong>Nova data:</strong> ${this.formatarDataHora(
+                    consultaReagendada.data,
+                    consultaReagendada.hora
+                  )}</p>
+                </div>
+              `,
                 icon: 'success',
                 confirmButtonText: 'OK',
                 customClass: {
@@ -148,22 +215,34 @@ export class ConsultasComponent implements OnInit {
               });
             },
             error: (err) => {
-              console.error('Erro ao atualizar consulta:', err);
-              Swal.fire({
-                title: 'Erro',
-                text: 'Não foi possível atualizar a consulta. Tente novamente.',
-                icon: 'error',
-                confirmButtonText: 'OK',
-                customClass: {
-                  confirmButton: 'btn btn-danger swal2-confirm-custom',
-                  popup: 'swal2-border-radius',
-                },
-                buttonsStyling: false,
-              });
+              console.error('Erro ao reagendar consulta:', err);
+              this.mostrarErro(
+                'Não foi possível reagendar a consulta. Tente novamente.'
+              );
             },
           });
       }
     });
+  }
+
+  // Método auxiliar para mostrar erros
+  private mostrarErro(mensagem: string): void {
+    Swal.fire({
+      title: 'Erro',
+      text: mensagem,
+      icon: 'error',
+      confirmButtonText: 'OK',
+      customClass: {
+        confirmButton: 'btn btn-danger swal2-confirm-custom',
+        popup: 'swal2-border-radius',
+      },
+      buttonsStyling: false,
+    });
+  }
+
+  // Método para obter data mínima (hoje)
+  private getDataMinima(): string {
+    return new Date().toISOString().split('T')[0];
   }
 
   // Método auxiliar para obter classe CSS baseada no status
@@ -196,5 +275,29 @@ export class ConsultasComponent implements OnInit {
       default:
         return 'Desconhecido';
     }
+  }
+
+  // Adicione estes métodos no seu ConsultasComponent
+
+  // Método para contar consultas por status
+  getTotalPorStatus(status: number): number {
+    return this.consultas.filter((consulta) => consulta.status === status)
+      .length;
+  }
+
+  // Método para verificar se a consulta pode ser cancelada
+  podeCancelar(consulta: Consulta): boolean {
+    return (
+      consulta.status === StatusConsulta.Agendada ||
+      consulta.status === StatusConsulta.Confirmada
+    );
+  }
+
+  // Método para verificar se a consulta pode ser reagendada
+  podeReagendar(consulta: Consulta): boolean {
+    return (
+      consulta.status === StatusConsulta.Agendada ||
+      consulta.status === StatusConsulta.Confirmada
+    );
   }
 }
