@@ -104,39 +104,75 @@ export class AuthService {
       })
     ).pipe(
       map((result: any) => {
-        console.log('Resposta do reset password:', result);
+        console.log('Resposta completa do reset password:', result);
+
+        // Na v1 do Supabase, o comportamento pode variar
+        // Vamos verificar diferentes cenários de resposta
 
         if (result.error) {
           console.error('Erro do Supabase:', result.error);
 
-          if (result.error.message?.includes('rate limit')) {
+          // Tratamento específico de erros
+          if (
+            result.error.message?.includes('rate limit') ||
+            result.error.code === 'rate_limit_exceeded'
+          ) {
             throw new Error('Muitas tentativas. Aguarde alguns minutos.');
           }
           if (
             result.error.message?.includes('email not found') ||
-            result.error.message?.includes('user not found')
+            result.error.message?.includes('user not found') ||
+            result.error.code === 'user_not_found'
           ) {
             throw new Error('Email não encontrado.');
           }
-          if (result.error.message?.includes('email not confirmed')) {
+          if (
+            result.error.message?.includes('email not confirmed') ||
+            result.error.code === 'email_not_confirmed'
+          ) {
             throw new Error(
               'Email não confirmado. Verifique sua caixa de entrada.'
             );
           }
-          throw result.error;
+
+          // Erro genérico
+          throw new Error(
+            result.error.message || 'Erro ao enviar email de recuperação.'
+          );
         }
 
-        // Na v1, sucesso retorna sem erro
-        return { success: true, message: 'Email enviado com sucesso' };
+        // Se não há erro, consideramos sucesso
+        // Na v1, pode retornar data nula ou vazia em caso de sucesso
+        if (result.data === null || result.data === undefined) {
+          return {
+            success: true,
+            message:
+              'Email de recuperação enviado com sucesso. Verifique sua caixa de entrada.',
+          };
+        }
+
+        return {
+          success: true,
+          message: 'Email de recuperação enviado com sucesso.',
+          data: result.data,
+        };
       }),
       catchError((error) => {
         console.error('Erro completo ao enviar email:', error);
 
+        // Tratamento de erros de rede ou outros
         let errorMessage =
           'Erro ao enviar email de recuperação. Tente novamente.';
 
-        if (error.message?.includes('JSON')) {
-          errorMessage = 'Erro de configuração do servidor.';
+        if (
+          error.message?.includes('JSON') ||
+          error.message?.includes('Network Error')
+        ) {
+          errorMessage =
+            'Erro de conexão. Verifique sua internet e tente novamente.';
+        } else if (error.message?.includes('Failed to fetch')) {
+          errorMessage =
+            'Erro de servidor. Tente novamente em alguns instantes.';
         }
 
         throw new Error(errorMessage);
