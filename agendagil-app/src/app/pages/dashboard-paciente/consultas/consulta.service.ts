@@ -1,4 +1,3 @@
-// src/app/consultas/consulta.service.ts
 import { Injectable } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
@@ -20,7 +19,6 @@ export class ConsultaService {
         }
 
         const userId = user.id;
-        console.log('Buscando consultas para o usuário UUID:', userId);
 
         return from(
           this.supabaseService
@@ -38,7 +36,6 @@ export class ConsultaService {
           throw result.error;
         }
 
-        console.log('Consultas encontradas:', result.data?.length || 0);
         return result.data.map((consulta: any) =>
           ModelConverter.fromSupabaseConsulta(consulta)
         );
@@ -63,7 +60,7 @@ export class ConsultaService {
             .from('consultas')
             .select('*')
             .eq('id', id)
-            .eq('paciente_id', user.id) // FILTRO DE SEGURANÇA
+            .eq('paciente_id', user.id)
             .single()
         );
       }),
@@ -83,10 +80,8 @@ export class ConsultaService {
 
         const consultaSupabase = ModelConverter.toSupabaseConsulta(consulta);
 
-        // Garantir que o paciente_id seja o usuário autenticado
         consultaSupabase.paciente_id = user.id;
 
-        // Garantir que o ID seja uma string válida para UUID
         if (!consultaSupabase.id || this.isNumber(consultaSupabase.id)) {
           consultaSupabase.id = this.generateUUID();
         }
@@ -116,12 +111,9 @@ export class ConsultaService {
 
         const consultaSupabase = ModelConverter.toSupabaseConsulta(consulta);
 
-        // Garantir que o ID da consulta seja consistente
         consultaSupabase.id = id;
-        // Garantir que o paciente_id seja mantido
-        consultaSupabase.paciente_id = user.id;
 
-        console.log('Atualizando consulta:', consultaSupabase);
+        consultaSupabase.paciente_id = user.id;
 
         return from(
           this.supabaseService
@@ -129,7 +121,7 @@ export class ConsultaService {
             .from('consultas')
             .update(consultaSupabase)
             .eq('id', id)
-            .eq('paciente_id', user.id) // FILTRO DE SEGURANÇA CRÍTICO
+            .eq('paciente_id', user.id)
             .select()
             .single()
         );
@@ -148,7 +140,6 @@ export class ConsultaService {
     );
   }
 
-  // MÉTODO ESPECÍFICO PARA CANCELAR CONSULTA
   cancelarConsulta(id: string): Observable<Consulta> {
     return from(this.supabaseService.getCurrentUser()).pipe(
       switchMap((user) => {
@@ -156,18 +147,16 @@ export class ConsultaService {
           throw new Error('Usuário não autenticado');
         }
 
-        console.log('Cancelando consulta ID:', id, 'para usuário:', user.id);
-
         return from(
           this.supabaseService
             .getClient()
             .from('consultas')
             .update({
-              status: 0, // StatusConsulta.Cancelada
+              status: 0,
               atualizado_em: new Date().toISOString()
             })
             .eq('id', id)
-            .eq('paciente_id', user.id) // FILTRO DE SEGURANÇA
+            .eq('paciente_id', user.id)
             .select()
             .single()
         );
@@ -186,15 +175,12 @@ export class ConsultaService {
     );
   }
 
-  // MÉTODO ESPECÍFICO PARA REAGENDAR CONSULTA
   reagendarConsulta(id: string, novaData: string, novaHora: string): Observable<Consulta> {
     return from(this.supabaseService.getCurrentUser()).pipe(
       switchMap((user) => {
         if (!user) {
           throw new Error('Usuário não autenticado');
         }
-
-        console.log('Reagendando consulta ID:', id, 'para:', novaData, novaHora);
 
         return from(
           this.supabaseService
@@ -206,7 +192,7 @@ export class ConsultaService {
               atualizado_em: new Date().toISOString()
             })
             .eq('id', id)
-            .eq('paciente_id', user.id) // FILTRO DE SEGURANÇA
+            .eq('paciente_id', user.id)
             .select()
             .single()
         );
@@ -238,7 +224,7 @@ export class ConsultaService {
             .from('consultas')
             .delete()
             .eq('id', id)
-            .eq('paciente_id', user.id) // FILTRO DE SEGURANÇA
+            .eq('paciente_id', user.id)
         );
       }),
       map((result: any) => {
@@ -248,12 +234,10 @@ export class ConsultaService {
     );
   }
 
-  // Método para verificar se é número
   private isNumber(value: any): boolean {
     return !isNaN(parseFloat(value)) && isFinite(value);
   }
 
-  // Gerar UUID v4
   private generateUUID(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
       /[xy]/g,

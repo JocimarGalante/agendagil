@@ -23,7 +23,6 @@ export class AuthService {
 
   private async carregarUsuario() {
     try {
-      // Correção: Na versão 1.35.7, session() retorna diretamente a session
       const session = await this.supabaseService.getClient().auth.session();
 
       if (session?.user) {
@@ -39,7 +38,6 @@ export class AuthService {
   }
 
   login(email: string, senha: string): Observable<UsuarioBase> {
-    // Correção: Convertendo a Promise diretamente para Observable
     const loginPromise = this.supabaseService.getClient().auth.signIn({
       email,
       password: senha
@@ -70,15 +68,13 @@ export class AuthService {
       }),
       catchError((error: any) => {
         console.error('Erro completo no login:', error);
-        // Correção: throwError importado corretamente
+
         return throwError(() => new Error(error.message || 'Erro desconhecido no login'));
       })
     );
   }
 
   private tratarErroLogin(error: any): string {
-    console.log('Erro do Supabase Auth:', error);
-
     if (error.message?.includes('Invalid login credentials')) {
       return 'Email ou senha inválidos';
     }
@@ -120,8 +116,6 @@ export class AuthService {
 
   private async buscarUsuarioPorId(id: string): Promise<UsuarioBase | null> {
     try {
-      console.log('Buscando usuário com ID:', id);
-
       const { data, error } = await this.supabaseService.getClient()
         .from('usuarios')
         .select('*')
@@ -138,7 +132,6 @@ export class AuthService {
         return null;
       }
 
-      console.log('Usuário encontrado:', data);
       return this.fromSupabaseUsuario(data);
     } catch (error) {
       console.error('Erro ao buscar usuário:', error);
@@ -158,18 +151,14 @@ export class AuthService {
         return;
       }
 
-      console.log('Todos os usuários na tabela:', data);
     } catch (error) {
       console.error('Erro no debug:', error);
     }
   }
 
-  // Método para verificar sessão atual
   async verificarSessao(): Promise<void> {
     try {
       const session = await this.supabaseService.getClient().auth.session();
-      console.log('Sessão atual:', session);
-      console.log('Usuário na sessão:', session?.user);
     } catch (error) {
       console.error('Erro ao verificar sessão:', error);
     }
@@ -194,7 +183,6 @@ export class AuthService {
       cep: usuario.cep
     };
 
-    // Adiciona campos específicos baseados no tipo
     switch (usuario.tipo) {
       case 'PACIENTE':
         base.cpf = usuario.cpf;

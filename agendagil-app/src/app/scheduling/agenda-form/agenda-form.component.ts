@@ -1,4 +1,3 @@
-// src/app/scheduling/agenda-form/agenda-form.component.ts
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -22,7 +21,7 @@ export class AgendaFormComponent implements OnInit {
   usuario: UsuarioBase | null = null;
   carregandoMedicos = false;
   carregandoHorarios = false;
-  consultasAtivas: any[] = []; // NOVO: Para mostrar consultas existentes
+  consultasAtivas: any[] = [];
 
   constructor(
     private fb: FormBuilder,
@@ -38,16 +37,13 @@ export class AgendaFormComponent implements OnInit {
     this.carregarEspecialidades();
     this.observarMudancasForm();
 
-    // Debug inicial
     this.debugDados();
   }
 
-  // NOVO MÉTODO: Carregar consultas ativas do usuário
   carregarConsultasAtivas(): void {
     this.schedulingService.getConsultasAtivasDoUsuario().subscribe({
       next: (consultas) => {
         this.consultasAtivas = consultas;
-        console.log('Consultas ativas do usuário:', this.consultasAtivas);
       },
       error: (erro) => {
         console.error('Erro ao carregar consultas ativas:', erro);
@@ -55,7 +51,6 @@ export class AgendaFormComponent implements OnInit {
     });
   }
 
-  // NOVO MÉTODO: Verificar se já existe consulta para a especialidade selecionada
   verificarConsultaExistente(especialidadeId: string): boolean {
     if (!especialidadeId || this.consultasAtivas.length === 0) {
       return false;
@@ -92,11 +87,6 @@ export class AgendaFormComponent implements OnInit {
     return false;
   }
 
-  debugDados(): void {
-    this.schedulingService.debugEspecialidades().subscribe();
-    this.schedulingService.debugMedicos().subscribe();
-  }
-
   criarForm(): FormGroup {
     return this.fb.group({
       especialidadeId: ['', Validators.required],
@@ -110,10 +100,6 @@ export class AgendaFormComponent implements OnInit {
     this.schedulingService.getEspecialidades().subscribe({
       next: (especialidades) => {
         this.especialidades = especialidades;
-        console.log(
-          'Especialidades carregadas no componente:',
-          this.especialidades
-        );
       },
       error: (erro) => {
         console.error('Erro ao carregar especialidades', erro);
@@ -127,7 +113,6 @@ export class AgendaFormComponent implements OnInit {
   }
 
   carregarMedicos(especialidadeId: string): void {
-    console.log('Carregando médicos para especialidade UUID:', especialidadeId);
     this.carregandoMedicos = true;
     this.medicosFiltrados = [];
 
@@ -138,10 +123,6 @@ export class AgendaFormComponent implements OnInit {
           this.medicosFiltrados = medicos;
           this.carregandoMedicos = false;
           this.agendamentoForm.patchValue({ medicoId: '' });
-          console.log(
-            'Médicos carregados no componente:',
-            this.medicosFiltrados
-          );
         },
         error: (erro) => {
           console.error('Erro ao carregar médicos', erro);
@@ -153,13 +134,10 @@ export class AgendaFormComponent implements OnInit {
   }
 
   observarMudancasForm(): void {
-    // Observar mudanças na especialidade
     this.agendamentoForm
       .get('especialidadeId')
       ?.valueChanges.subscribe((especialidadeId) => {
-        console.log('Especialidade alterada (UUID):', especialidadeId);
 
-        // NOVO: Verificar se já existe consulta para esta especialidade
         if (especialidadeId) {
           const existeConsulta =
             this.verificarConsultaExistente(especialidadeId);
@@ -174,7 +152,6 @@ export class AgendaFormComponent implements OnInit {
         }
       });
 
-    // Observar mudanças no médico e data para carregar horários
     this.agendamentoForm.get('medicoId')?.valueChanges.subscribe((medicoId) => {
       const data = this.agendamentoForm.get('data')?.value;
       if (medicoId && data) {
@@ -229,12 +206,11 @@ export class AgendaFormComponent implements OnInit {
 
   getMedicoSelecionado(): Medico | undefined {
     const medicoId = this.agendamentoForm.get('medicoId')?.value;
-    console.log('Buscando médico com UUID:', medicoId);
 
     if (!medicoId) return undefined;
 
     const medico = this.medicosFiltrados.find((m) => m.id === medicoId);
-    console.log('Médico encontrado:', medico);
+
     return medico;
   }
 
@@ -258,16 +234,11 @@ export class AgendaFormComponent implements OnInit {
   }
 
   onSubmit(): void {
-    console.log('=== INICIANDO SUBMIT ===');
-    console.log('Form Value:', this.agendamentoForm.value);
 
     if (this.agendamentoForm.valid && this.usuario) {
       const formValue = this.agendamentoForm.value;
       const medico = this.getMedicoSelecionado();
       const especialidade = this.getEspecialidadeSelecionada();
-
-      console.log('Médico selecionado:', medico);
-      console.log('Especialidade selecionada:', especialidade);
 
       if (!medico || !especialidade) {
         Swal.fire('Erro', 'Dados incompletos para o agendamento.', 'error');
@@ -292,7 +263,6 @@ export class AgendaFormComponent implements OnInit {
         status: StatusConsulta.Agendada,
       };
 
-      console.log('Agendamento a ser criado:', agendamento);
       this.confirmarAgendamento(agendamento);
     } else {
       this.marcarCamposComoSujos();
@@ -300,7 +270,6 @@ export class AgendaFormComponent implements OnInit {
     }
   }
 
-  // Método para gerar UUID determinístico baseado no ID numérico
   private generateDeterministicUUID(numericId: number): string {
     const hex = numericId.toString(16).padStart(8, '0');
     return `00000000-0000-4000-8000-${hex.padStart(12, '0')}`;
@@ -319,7 +288,6 @@ export class AgendaFormComponent implements OnInit {
         <p><strong>Horário:</strong> ${agendamento.hora}</p>
     `;
 
-    // NOVO: Mostrar consultas existentes se houver
     if (this.consultasAtivas.length > 0) {
       htmlContent += `
         <div class="mt-3 p-2 border border-warning rounded">
@@ -373,7 +341,7 @@ export class AgendaFormComponent implements OnInit {
 
             if (err.message?.includes('já possui uma consulta agendada')) {
               mensagemErro = err.message;
-              // Recarregar consultas ativas para atualizar a lista
+
               this.carregarConsultasAtivas();
             }
 

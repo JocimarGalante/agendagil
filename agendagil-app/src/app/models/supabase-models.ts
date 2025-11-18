@@ -13,8 +13,6 @@ export interface UsuarioSupabase {
   cidade?: string;
   estado?: string;
   cep?: string;
-
-  // Campos específicos por tipo
   cpf?: string;
   data_nascimento?: string;
   genero?: string;

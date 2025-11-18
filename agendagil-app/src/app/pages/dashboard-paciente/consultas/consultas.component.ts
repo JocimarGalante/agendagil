@@ -1,4 +1,3 @@
-// src/app/consultas/consultas.component.ts
 import { Component, OnInit } from '@angular/core';
 import { Consulta } from '@models/consulta.model';
 import { StatusConsulta } from '@models/status-consulta.model';
@@ -24,7 +23,6 @@ export class ConsultasComponent implements OnInit {
     this.consultaService.getConsultas().subscribe({
       next: (dados) => {
         this.consultas = dados;
-        console.log('Consultas carregadas:', this.consultas);
       },
       error: (erro) => {
         console.error('Erro ao buscar consultas', erro);
@@ -111,7 +109,6 @@ export class ConsultasComponent implements OnInit {
   }
 
   reagendarConsulta(consulta: Consulta): void {
-    // Validar se a consulta pode ser reagendada
     if (
       consulta.status === StatusConsulta.Cancelada ||
       consulta.status === StatusConsulta.Concluida
@@ -155,7 +152,6 @@ export class ConsultasComponent implements OnInit {
           return;
         }
 
-        // Validar se a data não é no passado
         const dataSelecionada = new Date(novaData);
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -177,7 +173,6 @@ export class ConsultasComponent implements OnInit {
       buttonsStyling: false,
     }).then((result) => {
       if (result.isConfirmed && result.value) {
-        // Usar o método específico para reagendar
         this.consultaService
           .reagendarConsulta(
             consulta.id!,
@@ -225,7 +220,6 @@ export class ConsultasComponent implements OnInit {
     });
   }
 
-  // Método auxiliar para mostrar erros
   private mostrarErro(mensagem: string): void {
     Swal.fire({
       title: 'Erro',
@@ -240,12 +234,10 @@ export class ConsultasComponent implements OnInit {
     });
   }
 
-  // Método para obter data mínima (hoje)
   private getDataMinima(): string {
     return new Date().toISOString().split('T')[0];
   }
 
-  // Método auxiliar para obter classe CSS baseada no status
   getStatusClass(status: number): string {
     switch (status) {
       case StatusConsulta.Agendada:
@@ -261,7 +253,6 @@ export class ConsultasComponent implements OnInit {
     }
   }
 
-  // Método auxiliar para obter texto do status
   getStatusText(status: number): string {
     switch (status) {
       case StatusConsulta.Agendada:
@@ -277,15 +268,11 @@ export class ConsultasComponent implements OnInit {
     }
   }
 
-  // Adicione estes métodos no seu ConsultasComponent
-
-  // Método para contar consultas por status
   getTotalPorStatus(status: number): number {
     return this.consultas.filter((consulta) => consulta.status === status)
       .length;
   }
 
-  // Método para verificar se a consulta pode ser cancelada
   podeCancelar(consulta: Consulta): boolean {
     return (
       consulta.status === StatusConsulta.Agendada ||
@@ -293,7 +280,6 @@ export class ConsultasComponent implements OnInit {
     );
   }
 
-  // Método para verificar se a consulta pode ser reagendada
   podeReagendar(consulta: Consulta): boolean {
     return (
       consulta.status === StatusConsulta.Agendada ||
