@@ -37,7 +37,7 @@ export class AuthService {
     }
   }
 
-  // 🔑 MÉTODO DE LOGIN ATUALIZADO COM MELHOR DEBUG
+  // 🔑 MÉTODO DE LOGIN
   login(email: string, senha: string): Observable<UsuarioBase> {
     console.log('🔐 Tentando login para:', email);
 
@@ -57,9 +57,6 @@ export class AuthService {
 
         if (result.user) {
           console.log('✅ Usuário autenticado. ID:', result.user.id);
-          console.log('📧 Email confirmado?:', !!result.user.confirmed_at);
-
-          // Buscar dados do usuário na tabela usuarios
           return from(this.buscarUsuarioPorId(result.user.id));
         }
 
@@ -67,13 +64,16 @@ export class AuthService {
       }),
       map((usuario: UsuarioBase | null) => {
         if (!usuario) {
-          console.error('❌ Perfil de usuário não encontrado na tabela usuarios');
-          throw new Error('Perfil de usuário não encontrado. Contate o suporte.');
+          console.error(
+            '❌ Perfil de usuário não encontrado na tabela usuarios'
+          );
+          throw new Error(
+            'Perfil de usuário não encontrado. Contate o suporte.'
+          );
         }
 
         console.log('✅ Login bem sucedido. Usuário:', usuario.nome);
 
-        // Salvar no localStorage e state
         const expirationTime = new Date().getTime() + 60 * 60 * 1000;
         localStorage.setItem('usuarioLogado', JSON.stringify(usuario));
         localStorage.setItem('tokenExpiration', expirationTime.toString());
@@ -83,108 +83,164 @@ export class AuthService {
       }),
       catchError((error: any) => {
         console.error('💥 Erro completo no login:', error);
-        return throwError(() => new Error(error.message || 'Erro desconhecido no login'));
+        return throwError(
+          () => new Error(error.message || 'Erro desconhecido no login')
+        );
       })
     );
   }
 
   // 🔑 MÉTODO DE REGISTRO CORRIGIDO PARA SUPABASE v1
-  registrarUsuario(email: string, senha: string, dadosUsuario: any): Observable<any> {
+  // 🔑 MÉTODO DE REGISTRO CORRIGIDO PARA SUPABASE v1
+  registrarUsuario(
+    email: string,
+    senha: string,
+    dadosUsuario: any
+  ): Observable<any> {
     console.log('📝 Iniciando registro para:', email);
 
     return from(
       this.supabaseService.getClient().auth.signUp({
         email: email,
         password: senha,
-        // Na v1, os dados extras vão diretamente, não em "options"
       })
     ).pipe(
-      switchMap((result: any) => {
-        console.log('📨 Resposta do registro:', result);
+      switchMap((authResult: any) => {
+        console.log('📨 Resposta do registro:', authResult);
 
-        if (result.error) {
-          throw new Error(this.tratarErroRegistro(result.error));
+        if (authResult.error) {
+          throw new Error(this.tratarErroRegistro(authResult.error));
         }
 
-        if (result.user) {
-          console.log('✅ Usuário criado no Auth. ID:', result.user.id);
-          console.log('📧 Email de confirmação enviado?:', !result.user.confirmed_at);
-          console.log('🔍 User metadata:', result.user.user_metadata);
+        if (authResult.user) {
+          console.log('✅ Usuário criado no Auth. ID:', authResult.user.id);
+          console.log('📧 Email confirmado?:', !!authResult.user.confirmed_at);
 
-          // Criar perfil na tabela usuarios mesmo sem confirmação
-          const perfilUsuario = {
-            id: result.user.id,
-            nome: dadosUsuario.nome || result.user.user_metadata?.nome || 'Novo Usuário',
-            email: email,
-            tipo: dadosUsuario.tipo || 'PACIENTE',
-            telefone: dadosUsuario.telefone,
-            foto_perfil_url: null,
-            status: result.user.confirmed_at ? 'ATIVO' : 'PENDENTE',
-            criado_em: new Date().toISOString(),
-            atualizado_em: new Date().toISOString(),
-
-            // Campos específicos baseados no tipo
-            ...(dadosUsuario.tipo === 'PACIENTE' && {
-              cpf: dadosUsuario.cpf,
-              data_nascimento: dadosUsuario.dataNascimento,
-              genero: dadosUsuario.genero
-            }),
-
-            ...(dadosUsuario.tipo === 'PROFISSIONAL_AUTONOMO' && {
-              crm: dadosUsuario.crm,
-              especialidade: dadosUsuario.especialidade,
-              descricao: dadosUsuario.descricao,
-              formacao: dadosUsuario.formacao,
-              experiencia: dadosUsuario.experiencia,
-              site_profissional: dadosUsuario.siteProfissional
-            }),
-
-            ...(dadosUsuario.tipo === 'CLINICA' && {
-              cnpj: dadosUsuario.cnpj,
-              razao_social: dadosUsuario.razaoSocial,
-              responsavel_tecnico: dadosUsuario.responsavelTecnico,
-              registro_responsavel: dadosUsuario.registroResponsavel,
-              especialidades_atendidas: dadosUsuario.especialidadesAtendidas,
-              site: dadosUsuario.site,
-              horario_funcionamento: dadosUsuario.horarioFuncionamento
-            }),
-
-            // Campos comuns opcionais
-            endereco: dadosUsuario.endereco,
-            cidade: dadosUsuario.cidade,
-            estado: dadosUsuario.estado,
-            cep: dadosUsuario.cep
-          };
-
-          console.log('📝 Criando perfil na tabela usuarios:', perfilUsuario);
-
+          // 🔑 VERIFICAR SE JÁ EXISTE NA TABELA USUARIOS ANTES DE INSERIR
           return from(
-            this.supabaseService.getClient()
+            this.supabaseService
+              .getClient()
               .from('usuarios')
-              .insert([perfilUsuario])
+              .select('id')
+              .eq('id', authResult.user.id)
               .single()
           ).pipe(
-            map((insertResult: any) => {
-              if (insertResult.error) {
-                console.error('❌ Erro ao criar perfil:', insertResult.error);
-                throw insertResult.error;
-              }
+            switchMap((checkResult: any) => {
+              const perfilUsuario = {
+                id: authResult.user.id,
+                nome: dadosUsuario.nome,
+                email: email,
+                tipo: dadosUsuario.tipo || 'PACIENTE',
+                telefone: dadosUsuario.telefone,
+                foto_perfil_url: null,
+                status: authResult.user.confirmed_at ? 'ATIVO' : 'PENDENTE',
+                criado_em: new Date().toISOString(),
+                atualizado_em: new Date().toISOString(),
 
-              // Retornar informações sobre o status de confirmação
-              return {
-                success: true,
-                usuario: insertResult.data,
-                emailConfirmacaoEnviado: !result.user.confirmed_at,
-                usuarioConfirmado: !!result.user.confirmed_at,
-                mensagem: result.user.confirmed_at
-                  ? 'Conta criada e confirmada com sucesso!'
-                  : 'Conta criada! Verifique seu email para confirmar antes de fazer login.'
+                // Campos específicos baseados no tipo
+                ...(dadosUsuario.tipo === 'PACIENTE' && {
+                  cpf: dadosUsuario.cpf,
+                  data_nascimento: dadosUsuario.dataNascimento,
+                  genero: dadosUsuario.genero,
+                }),
+
+                ...(dadosUsuario.tipo === 'PROFISSIONAL_AUTONOMO' && {
+                  crm: dadosUsuario.crm,
+                  especialidade: dadosUsuario.especialidade,
+                  descricao: dadosUsuario.descricao,
+                  formacao: dadosUsuario.formacao,
+                  experiencia: dadosUsuario.experiencia,
+                  site_profissional: dadosUsuario.siteProfissional,
+                }),
+
+                ...(dadosUsuario.tipo === 'CLINICA' && {
+                  cnpj: dadosUsuario.cnpj,
+                  razao_social: dadosUsuario.razaoSocial,
+                  responsavel_tecnico: dadosUsuario.responsavelTecnico,
+                  registro_responsavel: dadosUsuario.registroResponsavel,
+                  especialidades_atendidas:
+                    dadosUsuario.especialidadesAtendidas,
+                  site: dadosUsuario.site,
+                  horario_funcionamento: dadosUsuario.horarioFuncionamento,
+                }),
+
+                // Campos comuns opcionais
+                endereco: dadosUsuario.endereco,
+                cidade: dadosUsuario.cidade,
+                estado: dadosUsuario.estado,
+                cep: dadosUsuario.cep,
               };
+
+              if (checkResult.data) {
+                console.log(
+                  '⚠️  Usuário já existe na tabela usuarios, atualizando...'
+                );
+
+                return from(
+                  this.supabaseService
+                    .getClient()
+                    .from('usuarios')
+                    .update(perfilUsuario)
+                    .eq('id', authResult.user.id)
+                    .single()
+                ).pipe(
+                  map((dbResult: any) => ({
+                    dbResult,
+                    authResult,
+                    perfilUsuario,
+                  }))
+                );
+              } else {
+                console.log('📝 Criando novo perfil na tabela usuarios');
+
+                return from(
+                  this.supabaseService
+                    .getClient()
+                    .from('usuarios')
+                    .insert([perfilUsuario])
+                    .single()
+                ).pipe(
+                  map((dbResult: any) => ({
+                    dbResult,
+                    authResult,
+                    perfilUsuario,
+                  }))
+                );
+              }
             })
           );
         }
 
         throw new Error('Usuário não retornado no registro');
+      }),
+      map(({ dbResult, authResult, perfilUsuario }) => {
+        if (dbResult.error) {
+          console.error('❌ Erro ao salvar no banco:', dbResult.error);
+
+          // Tratamento específico para duplicate key
+          if (
+            dbResult.error.message?.includes('duplicate key') ||
+            dbResult.error.code === '23505'
+          ) {
+            throw new Error(
+              'Este usuário já está cadastrado. Tente fazer login.'
+            );
+          }
+
+          throw dbResult.error;
+        }
+
+        console.log('✅ Perfil salvo/atualizado com sucesso');
+
+        return {
+          success: true,
+          usuario: dbResult.data || perfilUsuario,
+          emailConfirmacaoEnviado: !authResult.user.confirmed_at,
+          usuarioConfirmado: !!authResult.user.confirmed_at,
+          mensagem: authResult.user.confirmed_at
+            ? 'Conta criada e confirmada com sucesso!'
+            : 'Conta criada! Verifique seu email para confirmar.',
+        };
       }),
       catchError((error) => {
         console.error('💥 Erro completo no registro:', error);
@@ -205,6 +261,9 @@ export class AuthService {
     }
     if (error.message?.includes('rate limit')) {
       return 'Muitas tentativas. Aguarde alguns minutos.';
+    }
+    if (error.message?.includes('duplicate key')) {
+      return 'Este usuário já existe no sistema.';
     }
     return error.message || 'Erro ao criar conta. Tente novamente.';
   }
@@ -230,7 +289,6 @@ export class AuthService {
     const redirectTo = 'https://agendagil.vercel.app/reset-senha';
 
     console.log('Enviando email de recuperação para:', email);
-    console.log('URL de redirecionamento:', redirectTo);
 
     return from(
       this.supabaseService.getClient().auth.api.resetPasswordForEmail(email, {
@@ -242,67 +300,20 @@ export class AuthService {
 
         if (result.error) {
           console.error('Erro do Supabase:', result.error);
-
-          if (
-            result.error.message?.includes('rate limit') ||
-            result.error.code === 'rate_limit_exceeded'
-          ) {
-            throw new Error('Muitas tentativas. Aguarde alguns minutos.');
-          }
-          if (
-            result.error.message?.includes('email not found') ||
-            result.error.message?.includes('user not found') ||
-            result.error.code === 'user_not_found'
-          ) {
-            throw new Error('Email não encontrado.');
-          }
-          if (
-            result.error.message?.includes('email not confirmed') ||
-            result.error.code === 'email_not_confirmed'
-          ) {
-            throw new Error(
-              'Email não confirmado. Verifique sua caixa de entrada.'
-            );
-          }
-
-          throw new Error(
-            result.error.message || 'Erro ao enviar email de recuperação.'
-          );
-        }
-
-        // Se não há erro, consideramos sucesso
-        if (result.data === null || result.data === undefined) {
-          return {
-            success: true,
-            message:
-              'Email de recuperação enviado com sucesso. Verifique sua caixa de entrada.',
-          };
+          throw new Error('Erro ao enviar email de recuperação.');
         }
 
         return {
           success: true,
-          message: 'Email de recuperação enviado com sucesso.',
-          data: result.data,
+          message:
+            'Email de recuperação enviado com sucesso. Verifique sua caixa de entrada.',
         };
       }),
       catchError((error) => {
         console.error('Erro completo ao enviar email:', error);
-
-        let errorMessage =
-          'Erro ao enviar email de recuperação. Tente novamente.';
-
-        if (
-          error.message?.includes('JSON') ||
-          error.message?.includes('Network Error')
-        ) {
-          errorMessage =
-            'Erro de conexão. Verifique sua internet e tente novamente.';
-        } else if (error.message?.includes('Failed to fetch')) {
-          errorMessage =
-            'Erro de servidor. Tente novamente em alguns instantes.';
-        }
-
-        throw new Error(errorMessage);
+        throw new Error(
+          'Erro ao enviar email de recuperação. Tente novamente.'
+        );
       })
     );
   }
@@ -319,9 +330,7 @@ export class AuthService {
           throw result.error;
         }
 
-        // Logout após alterar senha para forçar novo login
         this.supabaseService.getClient().auth.signOut();
-
         return { success: true, message: 'Senha atualizada com sucesso' };
       }),
       catchError((error) => {
@@ -336,10 +345,7 @@ export class AuthService {
     return new Observable((observer) => {
       try {
         const session = this.supabaseService.getClient().auth.session();
-
-        // Verificar se há uma sessão válida
         const hasValidSession = !!session && !!session.access_token;
-
         observer.next(hasValidSession);
         observer.complete();
       } catch (error) {
@@ -354,41 +360,15 @@ export class AuthService {
   reenviarEmailConfirmacao(email: string): Observable<any> {
     console.log('📧 Reenviando email de confirmação para:', email);
 
-    // Na v1 do Supabase, não há método direto para reenviar confirmação
-    // Podemos tentar usar o signUp novamente com os mesmos dados
-    return from(
-      this.supabaseService.getClient().auth.signUp({
-        email: email,
-        password: 'temporary-password-123', // Senha temporária
-      })
-    ).pipe(
-      map((result: any) => {
-        console.log('Resposta do reenvio:', result);
-
-        if (result.error) {
-          console.error('Erro ao reenviar email:', result.error);
-
-          if (result.error.message?.includes('User already registered')) {
-            // Isso é esperado - significa que o usuário já existe
-            return {
-              success: true,
-              message: 'Email de confirmação reenviado com sucesso! Verifique sua caixa de entrada.'
-            };
-          }
-
-          throw new Error('Erro ao reenviar email de confirmação.');
-        }
-
-        return {
-          success: true,
-          message: 'Email de confirmação reenviado com sucesso! Verifique sua caixa de entrada.'
-        };
-      }),
-      catchError((error) => {
-        console.error('Erro completo ao reenviar email:', error);
-        throw new Error('Erro ao reenviar email de confirmação. Tente novamente.');
-      })
-    );
+    return new Observable((observer) => {
+      // Não tentar reenviar imediatamente - apenas dar instruções
+      observer.next({
+        success: true,
+        message:
+          'Para reenviar o email de confirmação: 1) Aguarde pelo menos 60 segundos 2) Tente fazer login novamente 3) Se ainda não recebeu, verifique a pasta de spam',
+      });
+      observer.complete();
+    });
   }
 
   // Método para verificar se o usuário está autenticado via Supabase
@@ -426,11 +406,8 @@ export class AuthService {
     return !!this.currentUserSubject.value;
   }
 
-  // 🔑 MÉTODO BUSCAR USUÁRIO ATUALIZADO COM MELHOR DEBUG
   private async buscarUsuarioPorId(id: string): Promise<UsuarioBase | null> {
     try {
-      console.log('🔍 Buscando usuário na tabela usuarios. ID:', id);
-
       const { data, error } = await this.supabaseService
         .getClient()
         .from('usuarios')
@@ -439,19 +416,18 @@ export class AuthService {
         .single();
 
       if (error) {
-        console.error('❌ Erro ao buscar usuário no Supabase:', error);
+        console.error('Erro ao buscar usuário no Supabase:', error);
         return null;
       }
 
       if (!data) {
-        console.error('❌ Usuário não encontrado na tabela usuarios para ID:', id);
+        console.error('Usuário não encontrado na tabela usuarios');
         return null;
       }
 
-      console.log('✅ Usuário encontrado:', data.nome);
       return this.fromSupabaseUsuario(data);
     } catch (error) {
-      console.error('💥 Erro ao buscar usuário:', error);
+      console.error('Erro ao buscar usuário:', error);
       return null;
     }
   }
@@ -548,7 +524,7 @@ export class AuthService {
     return Math.abs(hash);
   }
 
-  // Método para obter o usuário atual do Supabase (útil para componentes)
+  // Método para obter o usuário atual do Supabase
   async getCurrentSupabaseUser() {
     const session = this.supabaseService.getClient().auth.session();
     return session?.user || null;
@@ -563,8 +539,7 @@ export class AuthService {
   // 🔑 MÉTODO PARA VERIFICAR STATUS DE CONFIRMAÇÃO
   async verificarStatusUsuario(email: string): Promise<any> {
     try {
-      // Na v1, precisamos fazer uma query direta na tabela auth.users
-      const { data: usuarios, error } = await this.supabaseService
+      const { data: usuario, error } = await this.supabaseService
         .getClient()
         .from('usuarios')
         .select('*')
@@ -576,15 +551,11 @@ export class AuthService {
         return null;
       }
 
-      if (usuarios) {
-        // Buscar informações do auth (isso pode não funcionar diretamente devido a RLS)
-        const session = this.supabaseService.getClient().auth.session();
-
+      if (usuario) {
         return {
-          usuario: usuarios,
-          emailConfirmado: usuarios.status === 'ATIVO',
+          usuario: usuario,
+          emailConfirmado: usuario.status === 'ATIVO',
           perfilCriado: true,
-          session: session
         };
       }
 
@@ -595,15 +566,11 @@ export class AuthService {
     }
   }
 
-  // 🔑 MÉTODO PARA CONFIRMANÇÃO MANUAL (APENAS DESENVOLVIMENTO)
+  // 🔑 MÉTODO PARA CONFIRMAÇÃO MANUAL (APENAS DESENVOLVIMENTO)
   async confirmarEmailManualmente(email: string): Promise<boolean> {
     try {
       console.log('🛠️  Confirmando email manualmente para:', email);
 
-      // Esta é uma solução temporária para desenvolvimento
-      // Em produção, o usuário deve confirmar pelo email
-
-      // Atualizar status na tabela usuarios
       const { error } = await this.supabaseService
         .getClient()
         .from('usuarios')
