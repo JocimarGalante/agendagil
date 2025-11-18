@@ -166,13 +166,23 @@ export class AgendaFormComponent implements OnInit {
 
   carregarHorarios(medicoId: string, data: string): void {
     this.carregandoHorarios = true;
+    this.horariosDisponiveis = [];
+
     this.schedulingService.getHorariosDisponiveis(medicoId, data).subscribe({
       next: (horarios) => {
         this.horariosDisponiveis = horarios;
         this.carregandoHorarios = false;
-        this.agendamentoForm.patchValue({ hora: '' });
 
-        if (horarios.length === 0) {
+        // Verificar se o horário atual selecionado ainda está disponível
+        const horaAtual = this.agendamentoForm.get('hora')?.value;
+        if (horaAtual && !horarios.includes(horaAtual)) {
+          this.agendamentoForm.patchValue({ hora: '' });
+          Swal.fire(
+            'Horário Indisponível',
+            'O horário selecionado não está mais disponível. Por favor, escolha outro horário.',
+            'warning'
+          );
+        } else if (horarios.length === 0) {
           Swal.fire(
             'Info',
             'Não há horários disponíveis para esta data.',
