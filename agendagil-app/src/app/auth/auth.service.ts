@@ -92,6 +92,7 @@ export class AuthService {
 
   // 🔑 MÉTODO DE REGISTRO CORRIGIDO
   // 🔑 MÉTODO DE REGISTRO COMPLETO E CORRIGIDO
+  // 🔑 MÉTODO DE REGISTRO - VERSÃO FINAL CORRIGIDA
   registrarUsuario(
     email: string,
     senha: string,
@@ -106,167 +107,334 @@ export class AuthService {
       })
     ).pipe(
       switchMap((authResult: any) => {
-        console.log('📨 Resposta completa do Auth:', authResult);
+        console.log('🔐 Resposta do Auth:', {
+          user: authResult.user?.id,
+          error: authResult.error,
+          session: authResult.session ? 'EXISTE' : 'NÃO EXISTE',
+        });
 
         if (authResult.error) {
-          console.error('❌ Erro no Auth:', authResult.error);
           throw new Error(this.tratarErroRegistro(authResult.error));
         }
 
         if (!authResult.user) {
-          console.error('❌ Usuário não retornado no registro');
           throw new Error('Usuário não retornado no registro');
         }
 
         const userId = authResult.user.id;
-        console.log('✅ Usuário criado no Auth. ID:', userId);
-        console.log('📧 Email confirmado?:', !!authResult.user.confirmed_at);
+        console.log('✅ Usuário Auth criado. ID:', userId);
 
-        // Construir perfil completo do usuário
-        const perfilUsuario: any = {
-          id: userId,
-          nome: dadosUsuario.nome,
-          email: email,
-          tipo: dadosUsuario.tipo || 'PACIENTE',
-          telefone: dadosUsuario.telefone,
-          foto_perfil_url: null,
-          status: authResult.user.confirmed_at ? 'ATIVO' : 'PENDENTE',
-          criado_em: new Date().toISOString(),
-          atualizado_em: new Date().toISOString(),
-          endereco: dadosUsuario.endereco || null,
-          cidade: dadosUsuario.cidade || null,
-          estado: dadosUsuario.estado || null,
-          cep: dadosUsuario.cep || null,
-        };
-
-        // Adicionar campos específicos baseados no tipo
-        switch (dadosUsuario.tipo) {
-          case 'PACIENTE':
-            perfilUsuario.cpf = dadosUsuario.cpf || null;
-            perfilUsuario.data_nascimento = dadosUsuario.dataNascimento || null;
-            perfilUsuario.genero = dadosUsuario.genero || null;
-            break;
-
-          case 'PROFISSIONAL_AUTONOMO':
-            perfilUsuario.crm = dadosUsuario.crm || null;
-            perfilUsuario.especialidade = dadosUsuario.especialidade || null;
-            perfilUsuario.descricao = dadosUsuario.descricao || null;
-            perfilUsuario.formacao = dadosUsuario.formacao || null;
-            perfilUsuario.experiencia = dadosUsuario.experiencia || null;
-            perfilUsuario.site_profissional =
-              dadosUsuario.siteProfissional || null;
-            break;
-
-          case 'CLINICA':
-            perfilUsuario.cnpj = dadosUsuario.cnpj || null;
-            perfilUsuario.razao_social = dadosUsuario.razaoSocial || null;
-            perfilUsuario.responsavel_tecnico =
-              dadosUsuario.responsavelTecnico || null;
-            perfilUsuario.registro_responsavel =
-              dadosUsuario.registroResponsavel || null;
-            perfilUsuario.especialidades_atendidas =
-              dadosUsuario.especialidadesAtendidas || null;
-            perfilUsuario.site = dadosUsuario.site || null;
-            perfilUsuario.horario_funcionamento =
-              dadosUsuario.horarioFuncionamento || null;
-            perfilUsuario.descricao = dadosUsuario.descricao || null;
-            break;
-        }
-
-        console.log('📤 Perfil a ser inserido:', perfilUsuario);
-
-        // AGUARDAR 2 SEGUNDOS PARA EVITAR CONFLITOS
-        return from(new Promise((resolve) => setTimeout(resolve, 2000))).pipe(
-          switchMap(() => {
-            console.log('🔄 Tentando inserir na tabela usuarios...');
-
-            return from(
-              this.supabaseService
-                .getClient()
-                .from('usuarios')
-                .insert([perfilUsuario])
-                .single()
-            ).pipe(
-              map((dbResult: any) => ({
-                dbResult,
-                authResult,
-                perfilUsuario,
-              }))
-            );
-          })
+        // 🔥 ESTRATÉGIA DEFINITIVA: Verificar → Inserir → Upsert em caso de erro
+        return this.estrategiaRegistroDefinitiva(
+          userId,
+          email,
+          dadosUsuario,
+          authResult
         );
       }),
-      map(({ dbResult, authResult, perfilUsuario }) => {
-        console.log('📨 Resposta do banco:', dbResult);
-
-        if (dbResult.error) {
-          console.error('❌ Erro ao inserir no banco:', dbResult.error);
-
-          // Tratamento específico para erro de RLS
-          if (
-            dbResult.error.message.includes('row-level security') ||
-            dbResult.error.message.includes('violates row-level security')
-          ) {
-            throw new Error('POLITICA_RLS_BLOQUEIO');
-          }
-
-          // Tratamento para chave duplicada
-          if (
-            dbResult.error.message.includes('duplicate key') ||
-            dbResult.error.code === '23505'
-          ) {
-            throw new Error('USUARIO_JA_EXISTE');
-          }
-
-          throw new Error(`ERRO_BANCO: ${dbResult.error.message}`);
-        }
-
-        console.log('✅ Usuário registrado com sucesso na tabela usuarios!');
-
-        // Retornar resultado formatado
-        return {
-          success: true,
-          usuario: dbResult.data,
-          emailConfirmacaoEnviado: !authResult.user.confirmed_at,
-          usuarioConfirmado: !!authResult.user.confirmed_at,
-          mensagem: authResult.user.confirmed_at
-            ? 'Conta criada e confirmada com sucesso!'
-            : 'Conta criada com sucesso! Verifique seu email para confirmar.',
-        };
-      }),
       catchError((error) => {
-        console.error('💥 Erro completo no registro:', error);
-
-        // Tratamento específico de erros
-        let mensagemErro = 'Erro ao criar conta. Tente novamente.';
-
-        if (error.message === 'POLITICA_RLS_BLOQUEIO') {
-          mensagemErro =
-            'Erro de configuração de segurança. Contate o suporte.';
-        } else if (error.message === 'USUARIO_JA_EXISTE') {
-          mensagemErro = 'Este usuário já está cadastrado. Tente fazer login.';
-        } else if (error.message.includes('ERRO_BANCO:')) {
-          mensagemErro =
-            'Erro no servidor. Tente novamente em alguns instantes.';
-        } else if (error.message.includes('User already registered')) {
-          mensagemErro = 'Este email já está cadastrado. Tente fazer login.';
-        } else if (error.message.includes('Password should be at least')) {
-          mensagemErro = 'A senha deve ter pelo menos 6 caracteres.';
-        } else if (error.message.includes('Invalid email')) {
-          mensagemErro = 'Email inválido. Verifique o formato.';
-        }
-
-        return throwError(() => new Error(mensagemErro));
+        console.error('💥 Erro final no registro:', error);
+        return throwError(
+          () => new Error(error.message || 'Erro ao criar conta.')
+        );
       })
     );
   }
 
-  // 🔧 MÉTODO AUXILIAR PARA TRATAR ERROS DE REGISTRO
+  // 🎯 ESTRATÉGIA DEFINITIVA DE REGISTRO
+  private estrategiaRegistroDefinitiva(
+    userId: string,
+    email: string,
+    dadosUsuario: any,
+    authResult: any
+  ): Observable<any> {
+    console.log('🎯 Iniciando estratégia definitiva de registro...');
+
+    return this.verificarUsuarioExistente(userId).pipe(
+      switchMap((usuarioExiste) => {
+        console.log(
+          usuarioExiste
+            ? '⚠️ Usuário JÁ EXISTE na tabela'
+            : '📝 Usuário NÃO EXISTE na tabela'
+        );
+
+        if (usuarioExiste) {
+          // Se JÁ EXISTE: Fazer UPDATE
+          return this.fazerUpdateUsuario(
+            userId,
+            email,
+            dadosUsuario,
+            authResult
+          );
+        } else {
+          // Se NÃO EXISTE: Fazer INSERT
+          return this.fazerInsertUsuario(
+            userId,
+            email,
+            dadosUsuario,
+            authResult
+          );
+        }
+      }),
+      catchError((error) => {
+        console.error(
+          '❌ Estratégia principal falhou, tentando fallback...',
+          error
+        );
+        return this.estrategiaFallback(userId, email, dadosUsuario, authResult);
+      })
+    );
+  }
+
+  // 🔍 VERIFICAR SE USUÁRIO EXISTE
+  private verificarUsuarioExistente(userId: string): Observable<boolean> {
+    return from(
+      this.supabaseService
+        .getClient()
+        .from('usuarios')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle()
+    ).pipe(
+      map((result: any) => {
+        if (result.error && result.error.code !== 'PGRST116') {
+          console.error('Erro ao verificar usuário:', result.error);
+          throw result.error;
+        }
+        return !!result.data; // Retorna true se existe, false se não existe
+      })
+    );
+  }
+
+  // 📝 FAZER INSERT (quando usuário não existe)
+  private fazerInsertUsuario(
+    userId: string,
+    email: string,
+    dadosUsuario: any,
+    authResult: any
+  ): Observable<any> {
+    console.log('📝 Executando INSERT...');
+
+    const perfilUsuario = this.criarPerfilCompleto(
+      userId,
+      email,
+      dadosUsuario,
+      authResult
+    );
+
+    return from(
+      this.supabaseService
+        .getClient()
+        .from('usuarios')
+        .insert([perfilUsuario])
+        .single()
+    ).pipe(
+      map((result: any) => {
+        if (result.error) {
+          console.error('❌ Erro no INSERT:', result.error);
+
+          // Se for erro de duplicate key, significa que o usuário foi criado ENTRE a verificação e o insert
+          if (
+            result.error.code === '23505' ||
+            result.error.message?.includes('duplicate key')
+          ) {
+            throw new Error('USUARIO_CRIADO_DURANTE_PROCESSO');
+          }
+          throw result.error;
+        }
+
+        console.log('✅ INSERT realizado com sucesso!');
+        return this.criarRespostaSucesso(result.data, authResult);
+      }),
+      catchError((error) => {
+        if (error.message === 'USUARIO_CRIADO_DURANTE_PROCESSO') {
+          console.log(
+            '🔄 Usuário foi criado durante o processo, fazendo UPDATE...'
+          );
+          return this.fazerUpdateUsuario(
+            userId,
+            email,
+            dadosUsuario,
+            authResult
+          );
+        }
+        throw error;
+      })
+    );
+  }
+
+  // 🔄 FAZER UPDATE (quando usuário já existe)
+  private fazerUpdateUsuario(
+    userId: string,
+    email: string,
+    dadosUsuario: any,
+    authResult: any
+  ): Observable<any> {
+    console.log('🔄 Executando UPDATE...');
+
+    const perfilUsuario = this.criarPerfilCompleto(
+      userId,
+      email,
+      dadosUsuario,
+      authResult
+    );
+
+    // Remover campos que não devem ser atualizados no UPDATE
+    const { id, criado_em, ...dadosUpdate } = perfilUsuario;
+
+    return from(
+      this.supabaseService
+        .getClient()
+        .from('usuarios')
+        .update(dadosUpdate)
+        .eq('id', userId)
+        .single()
+    ).pipe(
+      switchMap((result: any) => {
+        if (result.error) {
+          console.error('❌ Erro no UPDATE:', result.error);
+          throw result.error;
+        }
+
+        console.log('✅ UPDATE realizado com sucesso!');
+
+        // Buscar dados atualizados
+        return this.buscarUsuarioAtualizado(userId, authResult);
+      })
+    );
+  }
+
+  // 🆘 ESTRATÉGIA FALLBACK (se tudo falhar)
+  private estrategiaFallback(
+    userId: string,
+    email: string,
+    dadosUsuario: any,
+    authResult: any
+  ): Observable<any> {
+    console.log('🆘 Executando estratégia fallback...');
+
+    const perfilUsuario = this.criarPerfilCompleto(
+      userId,
+      email,
+      dadosUsuario,
+      authResult
+    );
+
+    return from(
+      this.supabaseService
+        .getClient()
+        .from('usuarios')
+        .upsert(perfilUsuario, { onConflict: 'id', ignoreDuplicates: false })
+        .single()
+    ).pipe(
+      map((result: any) => {
+        if (result.error) {
+          console.error('❌ Erro no UPSERT fallback:', result.error);
+          throw new Error(`Falha crítica no registro: ${result.error.message}`);
+        }
+
+        console.log('✅ UPSERT fallback realizado com sucesso!');
+        return this.criarRespostaSucesso(result.data, authResult);
+      })
+    );
+  }
+
+  // 🏗️ CRIAR PERFIL COMPLETO DO USUÁRIO
+  private criarPerfilCompleto(
+    userId: string,
+    email: string,
+    dadosUsuario: any,
+    authResult: any
+  ): any {
+    const perfil: any = {
+      id: userId,
+      nome: dadosUsuario.nome,
+      email: email,
+      tipo: dadosUsuario.tipo || 'PACIENTE',
+      telefone: dadosUsuario.telefone,
+      foto_perfil_url: null,
+      status: authResult.user.confirmed_at ? 'ATIVO' : 'PENDENTE',
+      criado_em: new Date().toISOString(),
+      atualizado_em: new Date().toISOString(),
+      endereco: dadosUsuario.endereco || null,
+      cidade: dadosUsuario.cidade || null,
+      estado: dadosUsuario.estado || null,
+      cep: dadosUsuario.cep || null,
+    };
+
+    // Campos específicos por tipo
+    switch (dadosUsuario.tipo) {
+      case 'PACIENTE':
+        perfil.cpf = dadosUsuario.cpf || null;
+        perfil.data_nascimento = dadosUsuario.dataNascimento || null;
+        perfil.genero = dadosUsuario.genero || null;
+        break;
+
+      case 'PROFISSIONAL_AUTONOMO':
+        perfil.crm = dadosUsuario.crm || null;
+        perfil.especialidade = dadosUsuario.especialidade || null;
+        perfil.descricao = dadosUsuario.descricao || null;
+        perfil.formacao = dadosUsuario.formacao || null;
+        perfil.experiencia = dadosUsuario.experiencia || null;
+        perfil.site_profissional = dadosUsuario.siteProfissional || null;
+        break;
+
+      case 'CLINICA':
+        perfil.cnpj = dadosUsuario.cnpj || null;
+        perfil.razao_social = dadosUsuario.razaoSocial || null;
+        perfil.responsavel_tecnico = dadosUsuario.responsavelTecnico || null;
+        perfil.registro_responsavel = dadosUsuario.registroResponsavel || null;
+        perfil.especialidades_atendidas =
+          dadosUsuario.especialidadesAtendidas || null;
+        perfil.site = dadosUsuario.site || null;
+        perfil.horario_funcionamento =
+          dadosUsuario.horarioFuncionamento || null;
+        perfil.descricao = dadosUsuario.descricao || null;
+        break;
+    }
+
+    return perfil;
+  }
+
+  // 🔍 BUSCAR USUÁRIO ATUALIZADO
+  private buscarUsuarioAtualizado(
+    userId: string,
+    authResult: any
+  ): Observable<any> {
+    return from(
+      this.supabaseService
+        .getClient()
+        .from('usuarios')
+        .select('*')
+        .eq('id', userId)
+        .single()
+    ).pipe(
+      map((result: any) => {
+        if (result.error) throw result.error;
+        return this.criarRespostaSucesso(result.data, authResult);
+      })
+    );
+  }
+
+  // ✅ CRIAR RESPOSTA DE SUCESSO
+  private criarRespostaSucesso(usuarioData: any, authResult: any): any {
+    return {
+      success: true,
+      usuario: usuarioData,
+      emailConfirmacaoEnviado: !authResult.user.confirmed_at,
+      usuarioConfirmado: !!authResult.user.confirmed_at,
+      mensagem: authResult.user.confirmed_at
+        ? 'Conta criada e confirmada com sucesso!'
+        : 'Conta criada com sucesso! Verifique seu email para confirmar.',
+    };
+  }
+
+  // 🔧 TRATAR ERROS DE REGISTRO
   private tratarErroRegistro(error: any): string {
-    console.log('🔧 Tratando erro de registro:', error);
+    console.log('🔧 Tratando erro:', error);
 
     if (error.message?.includes('User already registered')) {
-      return 'Este email já está cadastrado. Tente fazer login ou usar outro email.';
+      return 'Este email já está cadastrado. Tente fazer login.';
     }
     if (error.message?.includes('Password should be at least')) {
       return 'A senha deve ter pelo menos 6 caracteres.';
@@ -276,9 +444,6 @@ export class AuthService {
     }
     if (error.message?.includes('rate limit')) {
       return 'Muitas tentativas. Aguarde alguns minutos.';
-    }
-    if (error.message?.includes('duplicate key')) {
-      return 'Este usuário já existe no sistema.';
     }
 
     return error.message || 'Erro ao criar conta. Tente novamente.';
