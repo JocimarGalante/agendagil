@@ -105,8 +105,6 @@ export class AuthService {
       })
     ).pipe(
       switchMap((authResult: any) => {
-        console.log('📨 Resposta do registro:', authResult);
-
         if (authResult.error) {
           throw new Error(this.tratarErroRegistro(authResult.error));
         }
@@ -116,135 +114,52 @@ export class AuthService {
         }
 
         console.log('✅ Usuário criado no Auth. ID:', authResult.user.id);
-        console.log('📧 Email confirmado?:', !!authResult.user.confirmed_at);
 
-        // 🔑 AGUARDAR UM POUCO PARA EVITAR CONFLITOS COM TRIGGERS
-        return from(new Promise((resolve) => setTimeout(resolve, 1000))).pipe(
+        // Aguardar para evitar conflitos com triggers
+        return from(new Promise((resolve) => setTimeout(resolve, 2000))).pipe(
           switchMap(() => {
-            // 🔑 VERIFICAR SE JÁ EXISTE NA TABELA USUARIOS (PODE TER SIDO CRIADO POR TRIGGER)
+            const perfilUsuario = {
+              id: authResult.user.id,
+              nome: dadosUsuario.nome,
+              email: email,
+              tipo: dadosUsuario.tipo || 'PACIENTE',
+              telefone: dadosUsuario.telefone,
+              foto_perfil_url: null,
+              status: authResult.user.confirmed_at ? 'ATIVO' : 'PENDENTE',
+              criado_em: new Date().toISOString(),
+              atualizado_em: new Date().toISOString(),
+
+              // ... adicione todos os outros campos aqui
+            };
+
+            // 🔥 USA UPSERT PARA EVITAR CONFLITO DE CHAVE PRIMÁRIA
             return from(
               this.supabaseService
                 .getClient()
                 .from('usuarios')
-                .select('*')
-                .eq('id', authResult.user.id)
-                .maybeSingle()
+                .upsert(perfilUsuario, { onConflict: 'id' })
+                .single()
             ).pipe(
-              switchMap((checkResult: any) => {
-                const perfilUsuario = {
-                  id: authResult.user.id,
-                  nome: dadosUsuario.nome,
-                  email: email,
-                  tipo: dadosUsuario.tipo || 'PACIENTE',
-                  telefone: dadosUsuario.telefone,
-                  foto_perfil_url: null,
-                  status: authResult.user.confirmed_at ? 'ATIVO' : 'PENDENTE',
-                  criado_em: new Date().toISOString(),
-                  atualizado_em: new Date().toISOString(),
-
-                  // Campos específicos baseados no tipo
-                  ...(dadosUsuario.tipo === 'PACIENTE' && {
-                    cpf: dadosUsuario.cpf,
-                    data_nascimento: dadosUsuario.dataNascimento,
-                    genero: dadosUsuario.genero,
-                  }),
-
-                  ...(dadosUsuario.tipo === 'PROFISSIONAL_AUTONOMO' && {
-                    crm: dadosUsuario.crm,
-                    especialidade: dadosUsuario.especialidade,
-                    descricao: dadosUsuario.descricao,
-                    formacao: dadosUsuario.formacao,
-                    experiencia: dadosUsuario.experiencia,
-                    site_profissional: dadosUsuario.siteProfissional,
-                  }),
-
-                  ...(dadosUsuario.tipo === 'CLINICA' && {
-                    cnpj: dadosUsuario.cnpj,
-                    razao_social: dadosUsuario.razaoSocial,
-                    responsavel_tecnico: dadosUsuario.responsavelTecnico,
-                    registro_responsavel: dadosUsuario.registroResponsavel,
-                    especialidades_atendidas:
-                      dadosUsuario.especialidadesAtendidas,
-                    site: dadosUsuario.site,
-                    horario_funcionamento: dadosUsuario.horarioFuncionamento,
-                  }),
-
-                  // Campos comuns opcionais
-                  endereco: dadosUsuario.endereco,
-                  cidade: dadosUsuario.cidade,
-                  estado: dadosUsuario.estado,
-                  cep: dadosUsuario.cep,
-                };
-
-                if (checkResult.data) {
-                  console.log(
-                    '⚠️  Usuário já existe na tabela usuarios, atualizando...'
-                  );
-
-                  // REMOVER O ID DO UPDATE PARA EVITAR CONFLITO
-                  const { id, ...perfilParaUpdate } = perfilUsuario;
-
-                  return from(
-                    this.supabaseService
-                      .getClient()
-                      .from('usuarios')
-                      .update(perfilParaUpdate)
-                      .eq('id', authResult.user.id)
-                  ).pipe(
-                    map((updateResult: any) => ({
-                      result: updateResult,
-                      operation: 'update',
-                      authResult,
-                      perfilUsuario,
-                    }))
-                  );
-                } else {
-                  console.log('📝 Criando novo perfil na tabela usuarios');
-
-                  return from(
-                    this.supabaseService
-                      .getClient()
-                      .from('usuarios')
-                      .insert([perfilUsuario])
-                  ).pipe(
-                    map((insertResult: any) => ({
-                      result: insertResult,
-                      operation: 'insert',
-                      authResult,
-                      perfilUsuario,
-                    }))
-                  );
-                }
-              })
+              map((dbResult: any) => ({
+                dbResult,
+                authResult,
+                perfilUsuario,
+              }))
             );
           })
         );
       }),
-      map(({ result, operation, authResult, perfilUsuario }) => {
-        if (result.error) {
-          console.error(`❌ Erro ao ${operation} no banco:`, result.error);
-
-          // Se for erro de chave duplicada, tenta atualizar
-          if (
-            result.error.message?.includes('duplicate key') ||
-            result.error.code === '23505'
-          ) {
-            console.log('🔄 Tentando atualizar devido a chave duplicada...');
-            throw new Error('Usuário já existe no sistema. Tente fazer login.');
-          }
-
-          throw result.error;
+      map(({ dbResult, authResult, perfilUsuario }) => {
+        if (dbResult.error) {
+          console.error('❌ Erro no UPSERT:', dbResult.error);
+          throw dbResult.error;
         }
 
-        console.log(
-          `✅ Perfil ${
-            operation === 'update' ? 'atualizado' : 'criado'
-          } com sucesso`
-        );
+        console.log('✅ Perfil salvo com UPSERT');
 
         return {
           success: true,
-          usuario: result.data?.[0] || perfilUsuario,
+          usuario: dbResult.data,
           emailConfirmacaoEnviado: !authResult.user.confirmed_at,
           usuarioConfirmado: !!authResult.user.confirmed_at,
           mensagem: authResult.user.confirmed_at
@@ -254,17 +169,6 @@ export class AuthService {
       }),
       catchError((error) => {
         console.error('💥 Erro completo no registro:', error);
-
-        // Tratamento específico para erro de chave duplicada
-        if (
-          error.message?.includes('duplicate key') ||
-          error.message?.includes('já existe')
-        ) {
-          throw new Error(
-            'Este usuário já está cadastrado. Tente fazer login.'
-          );
-        }
-
         throw error;
       })
     );
