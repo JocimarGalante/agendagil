@@ -362,7 +362,7 @@ export class AgendaFormComponent implements OnInit {
               icon: 'success',
               confirmButtonText: 'OK',
             }).then(() => {
-              this.router.navigate(['/paciente/consultas']);
+              this.router.navigate(['/dashboard-paciente/consultas']);
             });
           },
           error: (err) => {
