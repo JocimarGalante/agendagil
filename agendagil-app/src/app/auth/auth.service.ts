@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, from, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, from, throwError, of } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 import { SupabaseService } from '../core/services/supabase.service';
 import { UsuarioBase } from '@models/usuario/usuario-base.model';
@@ -90,8 +90,6 @@ export class AuthService {
     );
   }
 
-  // 🔑 MÉTODO DE REGISTRO CORRIGIDO
-  // 🔑 MÉTODO DE REGISTRO COMPLETO E CORRIGIDO
   // 🔑 MÉTODO DE REGISTRO - VERSÃO FINAL CORRIGIDA
   registrarUsuario(
     email: string,
@@ -124,7 +122,6 @@ export class AuthService {
         const userId = authResult.user.id;
         console.log('✅ Usuário Auth criado. ID:', userId);
 
-        // 🔥 ESTRATÉGIA DEFINITIVA: Verificar → Inserir → Upsert em caso de erro
         return this.estrategiaRegistroDefinitiva(
           userId,
           email,
@@ -132,7 +129,7 @@ export class AuthService {
           authResult
         );
       }),
-      catchError((error) => {
+      catchError((error: any) => {
         console.error('💥 Erro final no registro:', error);
         return throwError(
           () => new Error(error.message || 'Erro ao criar conta.')
@@ -159,7 +156,6 @@ export class AuthService {
         );
 
         if (usuarioExiste) {
-          // Se JÁ EXISTE: Fazer UPDATE
           return this.fazerUpdateUsuario(
             userId,
             email,
@@ -167,7 +163,6 @@ export class AuthService {
             authResult
           );
         } else {
-          // Se NÃO EXISTE: Fazer INSERT
           return this.fazerInsertUsuario(
             userId,
             email,
@@ -176,7 +171,7 @@ export class AuthService {
           );
         }
       }),
-      catchError((error) => {
+      catchError((error: any) => {
         console.error(
           '❌ Estratégia principal falhou, tentando fallback...',
           error
@@ -201,7 +196,7 @@ export class AuthService {
           console.error('Erro ao verificar usuário:', result.error);
           throw result.error;
         }
-        return !!result.data; // Retorna true se existe, false se não existe
+        return !!result.data;
       })
     );
   }
@@ -233,7 +228,6 @@ export class AuthService {
         if (result.error) {
           console.error('❌ Erro no INSERT:', result.error);
 
-          // Se for erro de duplicate key, significa que o usuário foi criado ENTRE a verificação e o insert
           if (
             result.error.code === '23505' ||
             result.error.message?.includes('duplicate key')
@@ -246,7 +240,7 @@ export class AuthService {
         console.log('✅ INSERT realizado com sucesso!');
         return this.criarRespostaSucesso(result.data, authResult);
       }),
-      catchError((error) => {
+      catchError((error: any) => {
         if (error.message === 'USUARIO_CRIADO_DURANTE_PROCESSO') {
           console.log(
             '🔄 Usuário foi criado durante o processo, fazendo UPDATE...'
@@ -279,7 +273,6 @@ export class AuthService {
       authResult
     );
 
-    // Remover campos que não devem ser atualizados no UPDATE
     const { id, criado_em, ...dadosUpdate } = perfilUsuario;
 
     return from(
@@ -297,8 +290,6 @@ export class AuthService {
         }
 
         console.log('✅ UPDATE realizado com sucesso!');
-
-        // Buscar dados atualizados
         return this.buscarUsuarioAtualizado(userId, authResult);
       })
     );
@@ -362,7 +353,6 @@ export class AuthService {
       cep: dadosUsuario.cep || null,
     };
 
-    // Campos específicos por tipo
     switch (dadosUsuario.tipo) {
       case 'PACIENTE':
         perfil.cpf = dadosUsuario.cpf || null;
@@ -465,15 +455,16 @@ export class AuthService {
     return error.message || 'Erro ao fazer login. Tente novamente.';
   }
 
-  // MÉTODOS DE RESET DE SENHA
-  // 🔑 MÉTODO DE RESET DE SENHA CORRIGIDO
+  // ============================================================
+  // 🔐 MÉTODOS DE RESET DE SENHA - COMPLETOS E FUNCIONAIS
+  // ============================================================
+
+  // 🔑 MÉTODO PRINCIPAL DE RESET DE SENHA
   resetPassword(email: string): Observable<any> {
     console.log('📧 Enviando email de recuperação para:', email);
 
-    // 🔥 URL de redirect CORRETA - use a URL do seu site em produção
     const redirectTo = this.getResetPasswordRedirectUrl();
-
-    console.log('📍 Redirect URL configurada:', redirectTo);
+    console.log('📍 Redirect URL:', redirectTo);
 
     return from(
       this.supabaseService.getClient().auth.api.resetPasswordForEmail(email, {
@@ -481,88 +472,45 @@ export class AuthService {
       })
     ).pipe(
       map((result: any) => {
-        console.log('📨 Resposta do Supabase Auth:', result);
+        console.log('📨 Resposta do Supabase:', result);
 
         if (result.error) {
-          console.error('❌ Erro do Supabase:', {
-            message: result.error.message,
-            status: result.error.status,
-            code: result.error.code,
-          });
+          console.error('❌ Erro do Supabase:', result.error);
           throw new Error(this.tratarErroResetPassword(result.error));
         }
 
-        // 🔥 IMPORTANTE: O Supabase sempre retorna vazio no sucesso
-        // Se não há erro, consideramos que foi enviado
-        console.log('✅ Email de recuperação enviado com sucesso');
-
+        // Supabase não retorna dados no sucesso, apenas erro
+        console.log('✅ Solicitação de reset enviada com sucesso');
         return {
           success: true,
-          message:
-            'Email de recuperação enviado com sucesso! Verifique sua caixa de entrada e a pasta de spam.',
+          message: 'Email de recuperação enviado! Verifique sua caixa de entrada e a pasta de spam.'
         };
       }),
-      catchError((error) => {
-        console.error('💥 Erro completo ao enviar email:', error);
-        return throwError(
-          () =>
-            new Error(
-              this.tratarErroResetPassword(error) ||
-                'Erro ao enviar email de recuperação. Tente novamente.'
-            )
-        );
+      catchError((error: any) => {
+        console.error('💥 Erro no reset password:', error);
+        return throwError(() => new Error(
+          this.tratarErroResetPassword(error) ||
+          'Erro ao enviar email de recuperação. Tente novamente.'
+        ));
       })
     );
   }
 
   // 🔧 OBTER URL DE REDIRECT CORRETA
   private getResetPasswordRedirectUrl(): string {
-    // Em produção, use sua URL real
-    if (
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1'
-    ) {
-      // Desenvolvimento
+    // Use sua URL real em produção
+    const isLocalhost = window.location.hostname === 'localhost' ||
+                        window.location.hostname === '127.0.0.1';
+
+    if (isLocalhost) {
       return `${window.location.origin}/reset-senha`;
     } else {
-      // Produção - substitua pela sua URL real
+      // 🔥 SUBSTITUA pela sua URL real de produção
       return 'https://agendagil.vercel.app/reset-senha';
-      // ou return `${window.location.origin}/reset-senha`;
     }
   }
 
-  // 🔧 TRATAR ERROS ESPECÍFICOS DO RESET
-  private tratarErroResetPassword(error: any): string {
-    console.log('🔧 Tratando erro de reset:', error);
-
-    if (error?.message?.includes('Email not found')) {
-      return 'Email não encontrado. Verifique se o email está correto.';
-    }
-
-    if (error?.message?.includes('rate limit')) {
-      return 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
-    }
-
-    if (error?.message?.includes('disabled')) {
-      return 'Conta desativada. Entre em contato com o suporte.';
-    }
-
-    if (error?.status === 422) {
-      return 'Email inválido. Verifique o formato do email.';
-    }
-
-    if (error?.status === 429) {
-      return 'Muitas tentativas. Aguarde alguns minutos.';
-    }
-
-    return (
-      error?.message ||
-      'Não foi possível enviar o email de recuperação. Tente novamente.'
-    );
-  }
-
-  // Método para atualizar senha quando o usuário recebe o link
-  // 🔑 MÉTODO PARA ATUALIZAR SENHA (quando o usuário recebe o link)
+  // 🔑 ATUALIZAR SENHA (quando o usuário clica no link do email)
   updatePassword(newPassword: string): Observable<any> {
     console.log('🔄 Atualizando senha...');
 
@@ -586,55 +534,31 @@ export class AuthService {
 
         return {
           success: true,
-          message: 'Senha atualizada com sucesso! Faça login com a nova senha.',
+          message: 'Senha atualizada com sucesso! Faça login com a nova senha.'
         };
       }),
-      catchError((error) => {
-        console.error('💥 Erro completo ao atualizar senha:', error);
-        return throwError(
-          () =>
-            new Error(
-              this.tratarErroUpdatePassword(error) ||
-                'Erro ao atualizar senha. Tente novamente.'
-            )
-        );
+      catchError((error: any) => {
+        console.error('💥 Erro ao atualizar senha:', error);
+        return throwError(() => new Error(
+          this.tratarErroUpdatePassword(error) ||
+          'Erro ao atualizar senha. Tente novamente.'
+        ));
       })
     );
   }
 
-  // 🔧 TRATAR ERROS DE ATUALIZAÇÃO DE SENHA
-  private tratarErroUpdatePassword(error: any): string {
-    console.log('🔧 Tratando erro de update password:', error);
-
-    if (error?.message?.includes('Password should be at least')) {
-      return 'A senha deve ter pelo menos 6 caracteres.';
-    }
-
-    if (error?.message?.includes('invalid')) {
-      return 'Link de recuperação inválido ou expirado. Solicite um novo link.';
-    }
-
-    if (error?.message?.includes('session')) {
-      return 'Sessão expirada. Solicite um novo link de recuperação.';
-    }
-
-    return error?.message || 'Erro ao atualizar senha. Tente novamente.';
-  }
-
-  // Método melhorado para verificar sessão de recuperação
+  // 🔍 VERIFICAR SE HÁ SESSÃO VÁLIDA PARA RECUPERAÇÃO
   hasPasswordRecoverySession(): Observable<boolean> {
     return new Observable((observer) => {
       try {
         const session = this.supabaseService.getClient().auth.session();
 
-        console.log('🔍 Verificando sessão de recuperação:', {
+        console.log('🔍 Verificando sessão:', {
           hasSession: !!session,
           user: session?.user?.email,
-          expiresAt: session?.expires_at,
-          accessToken: session?.access_token ? 'EXISTS' : 'NULL',
+          accessToken: session?.access_token ? 'EXISTS' : 'NULL'
         });
 
-        // Considera válido se há sessão E o usuário está logado via recovery
         const isValid = !!session && !!session.user && !!session.access_token;
 
         console.log('✅ Sessão válida para recuperação?', isValid);
@@ -648,22 +572,112 @@ export class AuthService {
     });
   }
 
-  // 🔑 MÉTODO PARA REENVIAR EMAIL DE CONFIRMAÇÃO (Supabase v1)
+  // 👤 OBTER USUÁRIO DA SESSÃO DE RECUPERAÇÃO
+  getRecoverySessionUser(): { email: string; id: string } | null {
+    try {
+      const session = this.supabaseService.getClient().auth.session();
+
+      if (session?.user) {
+        return {
+          email: session.user.email || '',
+          id: session.user.id
+        };
+      }
+
+      return null;
+    } catch (error: any) {
+      console.error('Erro ao obter usuário da sessão:', error);
+      return null;
+    }
+  }
+
+  // 🔧 TRATAR ERROS DE RESET DE SENHA
+  private tratarErroResetPassword(error: any): string {
+    console.log('🔧 Tratando erro de reset:', error);
+
+    const message = error?.message || '';
+
+    if (message.includes('Email not found')) {
+      return 'Email não encontrado. Verifique se o email está correto.';
+    }
+
+    if (message.includes('rate limit') || error?.status === 429) {
+      return 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
+    }
+
+    if (message.includes('disabled')) {
+      return 'Conta desativada. Entre em contato com o suporte.';
+    }
+
+    if (error?.status === 422) {
+      return 'Email inválido. Verifique o formato do email.';
+    }
+
+    return 'Não foi possível enviar o email de recuperação. Tente novamente.';
+  }
+
+  // 🔧 TRATAR ERROS DE ATUALIZAÇÃO DE SENHA
+  private tratarErroUpdatePassword(error: any): string {
+    console.log('🔧 Tratando erro de update password:', error);
+
+    const message = error?.message || '';
+
+    if (message.includes('Password should be at least')) {
+      return 'A senha deve ter pelo menos 6 caracteres.';
+    }
+
+    if (message.includes('invalid') || message.includes('expired')) {
+      return 'Link de recuperação inválido ou expirado. Solicite um novo link.';
+    }
+
+    if (message.includes('session')) {
+      return 'Sessão expirada. Solicite um novo link de recuperação.';
+    }
+
+    return 'Erro ao atualizar senha. Tente novamente.';
+  }
+
+  // 🔍 MÉTODO DE DEBUG PARA RESET DE SENHA
+  debugResetPassword(email: string): Observable<any> {
+    console.log('🔍 Debug reset password para:', email);
+
+    const redirectTo = this.getResetPasswordRedirectUrl();
+    console.log('📍 Redirect URL:', redirectTo);
+
+    return from(
+      this.supabaseService.getClient().auth.api.resetPasswordForEmail(email, {
+        redirectTo: redirectTo,
+      })
+    ).pipe(
+      map((result: any) => {
+        console.log('📨 Resposta COMPLETA do Supabase:', result);
+
+        if (result.error) {
+          console.error('❌ Erro detalhado:', result.error);
+          throw result.error;
+        }
+
+        console.log('✅ Email de reset enviado com sucesso');
+        return { success: true, message: 'Debug: Email enviado com sucesso' };
+      })
+    );
+  }
+
+  // 🔑 MÉTODO PARA REENVIAR EMAIL DE CONFIRMAÇÃO
   reenviarEmailConfirmacao(email: string): Observable<any> {
     console.log('📧 Reenviando email de confirmação para:', email);
 
     return new Observable((observer) => {
-      // Não tentar reenviar imediatamente - apenas dar instruções
       observer.next({
         success: true,
-        message:
-          'Para reenviar o email de confirmação: 1) Aguarde pelo menos 60 segundos 2) Tente fazer login novamente 3) Se ainda não recebeu, verifique a pasta de spam',
+        message: 'Para reenviar o email de confirmação: 1) Aguarde pelo menos 60 segundos 2) Tente fazer login novamente 3) Se ainda não recebeu, verifique a pasta de spam'
       });
       observer.complete();
     });
   }
 
-  // Método para verificar se o usuário está autenticado via Supabase
+  // ... (os outros métodos permanecem iguais)
+
   async isAuthenticated(): Promise<boolean> {
     try {
       const session = await this.supabaseService.getClient().auth.session();
@@ -724,33 +738,7 @@ export class AuthService {
     }
   }
 
-  // Método para debug - verificar todos os usuários
-  async debugUsuarios(): Promise<void> {
-    try {
-      const { data, error } = await this.supabaseService
-        .getClient()
-        .from('usuarios')
-        .select('*');
-
-      if (error) {
-        console.error('Erro ao buscar usuários:', error);
-        return;
-      }
-
-      console.log('Usuários no banco:', data);
-    } catch (error) {
-      console.error('Erro no debug:', error);
-    }
-  }
-
-  async verificarSessao(): Promise<void> {
-    try {
-      const session = await this.supabaseService.getClient().auth.session();
-      console.log('Sessão atual:', session);
-    } catch (error) {
-      console.error('Erro ao verificar sessão:', error);
-    }
-  }
+  // ... (outros métodos auxiliares)
 
   private fromSupabaseUsuario(usuario: any): UsuarioBase {
     if (!usuario) return null as any;
@@ -816,19 +804,16 @@ export class AuthService {
     return Math.abs(hash);
   }
 
-  // Método para obter o usuário atual do Supabase
   async getCurrentSupabaseUser() {
     const session = this.supabaseService.getClient().auth.session();
     return session?.user || null;
   }
 
-  // Método para verificar se há uma sessão ativa
   async getCurrentSession() {
     const session = await this.supabaseService.getClient().auth.session();
     return session;
   }
 
-  // 🔑 MÉTODO PARA VERIFICAR STATUS DE CONFIRMAÇÃO
   async verificarStatusUsuario(email: string): Promise<any> {
     try {
       const { data: usuario, error } = await this.supabaseService
@@ -858,7 +843,6 @@ export class AuthService {
     }
   }
 
-  // 🔑 MÉTODO PARA CONFIRMAÇÃO MANUAL (APENAS DESENVOLVIMENTO)
   async confirmarEmailManualmente(email: string): Promise<boolean> {
     try {
       console.log('🛠️  Confirmando email manualmente para:', email);
