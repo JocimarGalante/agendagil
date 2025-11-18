@@ -36,8 +36,6 @@ export class AgendaFormComponent implements OnInit {
     this.usuario = this.authService.getUsuarioLogado();
     this.carregarEspecialidades();
     this.observarMudancasForm();
-
-    this.debugDados();
   }
 
   carregarConsultasAtivas(): void {
