@@ -40,7 +40,7 @@ export class AuthService {
   login(email: string, senha: string): Observable<UsuarioBase> {
     const loginPromise = this.supabaseService.getClient().auth.signIn({
       email,
-      password: senha
+      password: senha,
     });
 
     return from(loginPromise).pipe(
@@ -68,7 +68,9 @@ export class AuthService {
       }),
       catchError((error: any) => {
         console.error('Erro completo no login:', error);
-        return throwError(() => new Error(error.message || 'Erro desconhecido no login'));
+        return throwError(
+          () => new Error(error.message || 'Erro desconhecido no login')
+        );
       })
     );
   }
@@ -91,35 +93,73 @@ export class AuthService {
 
   // MÉTODOS DE RESET DE SENHA
   resetPassword(email: string): Observable<any> {
+    const redirectTo = 'https://agendagil.vercel.app/reset-senha';
+
+    console.log('Enviando email de recuperação para:', email);
+    console.log('URL de redirecionamento:', redirectTo);
+
     return from(
       this.supabaseService.getClient().auth.api.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: redirectTo,
+      })
+    ).pipe(
+      map((result: any) => {
+        console.log('Resposta do reset password:', result);
+
+        if (result.error) {
+          console.error('Erro do Supabase:', result.error);
+
+          if (result.error.message?.includes('rate limit')) {
+            throw new Error('Muitas tentativas. Aguarde alguns minutos.');
+          }
+          if (
+            result.error.message?.includes('email not found') ||
+            result.error.message?.includes('user not found')
+          ) {
+            throw new Error('Email não encontrado.');
+          }
+          if (result.error.message?.includes('email not confirmed')) {
+            throw new Error(
+              'Email não confirmado. Verifique sua caixa de entrada.'
+            );
+          }
+          throw result.error;
+        }
+
+        // Na v1, sucesso retorna sem erro
+        return { success: true, message: 'Email enviado com sucesso' };
+      }),
+      catchError((error) => {
+        console.error('Erro completo ao enviar email:', error);
+
+        let errorMessage =
+          'Erro ao enviar email de recuperação. Tente novamente.';
+
+        if (error.message?.includes('JSON')) {
+          errorMessage = 'Erro de configuração do servidor.';
+        }
+
+        throw new Error(errorMessage);
+      })
+    );
+  }
+
+  // Método para atualizar senha quando o usuário recebe o link
+  updatePassword(newPassword: string): Observable<any> {
+    return from(
+      this.supabaseService.getClient().auth.update({
+        password: newPassword,
       })
     ).pipe(
       map((result: any) => {
         if (result.error) {
           throw result.error;
         }
-        return result;
-      }),
-      catchError((error) => {
-        console.error('Erro ao enviar email de recuperação:', error);
-        throw error;
-      })
-    );
-  }
 
-  updatePassword(newPassword: string): Observable<any> {
-    return from(
-      this.supabaseService.getClient().auth.update({
-        password: newPassword
-      })
-    ).pipe(
-      map((result) => {
-        if (result.error) {
-          throw result.error;
-        }
-        return result;
+        // Logout após alterar senha para forçar novo login
+        this.supabaseService.getClient().auth.signOut();
+
+        return { success: true, message: 'Senha atualizada com sucesso' };
       }),
       catchError((error) => {
         console.error('Erro ao atualizar senha:', error);
@@ -128,12 +168,23 @@ export class AuthService {
     );
   }
 
+  // Método melhorado para verificar sessão de recuperação
   hasPasswordRecoverySession(): Observable<boolean> {
-    return from(Promise.resolve(this.supabaseService.getClient().auth.session())).pipe(
-      map((session: any) => {
-        return !!session;
-      })
-    );
+    return new Observable((observer) => {
+      try {
+        const session = this.supabaseService.getClient().auth.session();
+
+        // Verificar se há uma sessão válida
+        const hasValidSession = !!session && !!session.access_token;
+
+        observer.next(hasValidSession);
+        observer.complete();
+      } catch (error) {
+        console.error('Erro ao verificar sessão:', error);
+        observer.next(false);
+        observer.complete();
+      }
+    });
   }
 
   // Método para verificar se o usuário está autenticado via Supabase
@@ -173,7 +224,8 @@ export class AuthService {
 
   private async buscarUsuarioPorId(id: string): Promise<UsuarioBase | null> {
     try {
-      const { data, error } = await this.supabaseService.getClient()
+      const { data, error } = await this.supabaseService
+        .getClient()
         .from('usuarios')
         .select('*')
         .eq('id', id)
@@ -199,7 +251,8 @@ export class AuthService {
   // Método para debug - verificar todos os usuários
   async debugUsuarios(): Promise<void> {
     try {
-      const { data, error } = await this.supabaseService.getClient()
+      const { data, error } = await this.supabaseService
+        .getClient()
         .from('usuarios')
         .select('*');
 
@@ -239,7 +292,7 @@ export class AuthService {
       endereco: usuario.endereco,
       cidade: usuario.cidade,
       estado: usuario.estado,
-      cep: usuario.cep
+      cep: usuario.cep,
     };
 
     switch (usuario.tipo) {
@@ -281,7 +334,7 @@ export class AuthService {
     let hash = 0;
     for (let i = 0; i < id.length; i++) {
       const char = id.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return Math.abs(hash);

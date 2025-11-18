@@ -1,3 +1,4 @@
+<!-- reset-senha.component.html -->
 <div
   class="d-flex flex-column vh-100"
   style="background-color: #1b4f72; padding: 20px;"
@@ -13,7 +14,16 @@
 
       <h5 class="text-white text-center mb-3">Redefinir Senha</h5>
 
-      <div *ngIf="showForm; else invalidLink">
+      <!-- Verificando sessão -->
+      <div *ngIf="checkingSession" class="text-center text-white">
+        <div class="spinner-border text-light mb-3" role="status">
+          <span class="visually-hidden">Carregando...</span>
+        </div>
+        <p>Verificando link de recuperação...</p>
+      </div>
+
+      <!-- Formulário de redefinição -->
+      <div *ngIf="showForm && !checkingSession">
         <p class="text-white text-center small mb-4">
           Digite sua nova senha abaixo.
         </p>
@@ -29,19 +39,19 @@
               placeholder="Digite a nova senha"
               formControlName="password"
               [ngClass]="{
-                'is-invalid': password?.invalid && password?.touched,
-                'is-valid': password?.valid && password?.touched
+                'is-invalid': password && password.invalid && password.touched,
+                'is-valid': password && password.valid && password.touched
               }"
               [disabled]="loading"
             />
             <div
-              *ngIf="password?.invalid && password?.touched"
+              *ngIf="password && password.invalid && password.touched"
               class="invalid-feedback"
             >
-              <div *ngIf="password?.hasError('required')">
+              <div *ngIf="password.hasError('required')">
                 Senha é obrigatória.
               </div>
-              <div *ngIf="password?.hasError('minlength')">
+              <div *ngIf="password.hasError('minlength')">
                 A senha deve ter pelo menos 6 caracteres.
               </div>
             </div>
@@ -57,25 +67,24 @@
               placeholder="Confirme a nova senha"
               formControlName="confirmPassword"
               [ngClass]="{
-                'is-invalid': confirmPassword?.invalid && confirmPassword?.touched,
-                'is-valid': confirmPassword?.valid && confirmPassword?.touched
+                'is-invalid': confirmPassword && confirmPassword.invalid && confirmPassword.touched,
+                'is-valid': confirmPassword && confirmPassword.valid && confirmPassword.touched
               }"
               [disabled]="loading"
             />
             <div
-              *ngIf="confirmPassword?.invalid && confirmPassword?.touched"
+              *ngIf="confirmPassword && confirmPassword.invalid && confirmPassword.touched"
               class="invalid-feedback"
             >
-              <div *ngIf="confirmPassword?.hasError('required')">
+              <div *ngIf="confirmPassword.hasError('required')">
                 Confirmação de senha é obrigatória.
               </div>
-              <div *ngIf="confirmPassword?.hasError('passwordMismatch')">
+              <div *ngIf="confirmPassword.hasError('passwordMismatch')">
                 As senhas não coincidem.
               </div>
             </div>
           </div>
 
-          <!-- Botão de Submit -->
           <button
             type="submit"
             class="btn btn-success w-100 py-2"
@@ -91,29 +100,16 @@
         </form>
       </div>
 
-      <ng-template #invalidLink>
-        <div class="text-center text-white">
-          <div *ngIf="!loading" class="mb-3">
-            <i class="bi bi-exclamation-triangle fs-1 text-warning"></i>
-            <p class="mt-2">Verificando link de recuperação...</p>
-          </div>
-          <div *ngIf="loading" class="mb-3">
-            <div class="spinner-border text-light" role="status">
-              <span class="visually-hidden">Carregando...</span>
-            </div>
-            <p class="mt-2">Verificando...</p>
-          </div>
-        </div>
-      </ng-template>
-
       <div class="text-center mt-4 border-top pt-3">
-        <a
-          routerLink="/login"
+        <button
+          type="button"
           class="btn btn-outline-light btn-sm px-4"
+          [disabled]="loading || checkingSession"
           style="border-color: #28b463; color: #28b463"
+          routerLink="/login"
         >
           Voltar ao login
-        </a>
+        </button>
       </div>
     </div>
   </div>

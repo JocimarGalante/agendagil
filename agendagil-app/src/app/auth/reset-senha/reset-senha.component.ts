@@ -1,3 +1,4 @@
+// reset-senha.component.ts
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -13,6 +14,7 @@ export class ResetSenhaComponent implements OnInit {
   resetForm: FormGroup;
   loading = false;
   showForm = false;
+  checkingSession = true;
 
   constructor(
     private fb: FormBuilder,
@@ -27,30 +29,54 @@ export class ResetSenhaComponent implements OnInit {
 
   ngOnInit(): void {
     this.checkRecoverySession();
+
+    // Debug: log da URL atual
+    console.log('URL atual:', window.location.href);
+    console.log('Hash:', window.location.hash);
   }
 
   private checkRecoverySession(): void {
-    this.loading = true;
+    this.checkingSession = true;
+
     this.authService.hasPasswordRecoverySession().subscribe({
       next: (hasSession) => {
+        console.log('Sessão de recuperação válida:', hasSession);
         this.showForm = hasSession;
-        this.loading = false;
+        this.checkingSession = false;
+
         if (!hasSession) {
-          Swal.fire({
-            icon: 'error',
-            title: 'Link inválido',
-            text: 'Este link de recuperação é inválido ou expirou.',
-            confirmButtonColor: '#dc3545'
-          }).then(() => {
-            this.router.navigate(['/esqueci-senha']);
-          });
+          this.showInvalidLinkMessage();
         }
       },
-      error: () => {
+      error: (error) => {
+        console.error('Erro ao verificar sessão:', error);
         this.showForm = false;
-        this.loading = false;
-        this.router.navigate(['/esqueci-senha']);
+        this.checkingSession = false;
+        this.showInvalidLinkMessage();
       }
+    });
+  }
+
+  private showInvalidLinkMessage(): void {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Link inválido ou expirado',
+      html: `
+        <div class="text-start">
+          <p>Este link de recuperação é inválido ou expirou.</p>
+          <p>Possíveis motivos:</p>
+          <ul class="text-start">
+            <li>O link já foi utilizado</li>
+            <li>O link expirou (válido por 24 horas)</li>
+            <li>Erro na configuração</li>
+          </ul>
+          <p class="mb-0">Solicite um novo link de recuperação.</p>
+        </div>
+      `,
+      confirmButtonColor: '#dc3545',
+      confirmButtonText: 'Solicitar novo link'
+    }).then(() => {
+      this.router.navigate(['/esqueci-senha']);
     });
   }
 
@@ -60,12 +86,14 @@ export class ResetSenhaComponent implements OnInit {
 
     if (password && confirmPassword && password.value !== confirmPassword.value) {
       confirmPassword.setErrors({ passwordMismatch: true });
-    } else {
-      if (confirmPassword && confirmPassword.errors) {
-        delete confirmPassword.errors['passwordMismatch'];
-        if (Object.keys(confirmPassword.errors).length === 0) {
-          confirmPassword.setErrors(null);
-        }
+      return { passwordMismatch: true };
+    }
+
+    // Limpar erro se as senhas coincidem
+    if (confirmPassword && confirmPassword.errors?.['passwordMismatch']) {
+      delete confirmPassword.errors['passwordMismatch'];
+      if (Object.keys(confirmPassword.errors).length === 0) {
+        confirmPassword.setErrors(null);
       }
     }
 
@@ -77,14 +105,27 @@ export class ResetSenhaComponent implements OnInit {
       this.loading = true;
       const newPassword = this.resetForm.get('password')?.value;
 
+      console.log('Tentando atualizar senha...');
+
       this.authService.updatePassword(newPassword).subscribe({
-        next: () => {
+        next: (result) => {
+          console.log('Senha atualizada com sucesso:', result);
+
           Swal.fire({
             icon: 'success',
-            title: 'Senha alterada!',
-            text: 'Sua senha foi redefinida com sucesso.',
-            confirmButtonColor: '#28b463'
+            title: 'Senha alterada com sucesso!',
+            html: `
+              <div class="text-start">
+                <p>Sua senha foi redefinida com sucesso.</p>
+                <p class="mb-0">Agora você pode fazer login com sua nova senha.</p>
+              </div>
+            `,
+            confirmButtonColor: '#28b463',
+            confirmButtonText: 'Fazer login'
           }).then(() => {
+            // Limpar storage e redirecionar
+            localStorage.removeItem('usuarioLogado');
+            localStorage.removeItem('tokenExpiration');
             this.router.navigate(['/login']);
           });
         },
@@ -92,18 +133,32 @@ export class ResetSenhaComponent implements OnInit {
           console.error('Erro ao redefinir senha:', error);
           this.loading = false;
 
+          let errorMessage = 'Não foi possível redefinir sua senha. ';
+
+          if (error.message?.includes('Auth session missing') || error.message?.includes('session expired')) {
+            errorMessage = 'A sessão expirou. Solicite um novo link de recuperação.';
+          } else if (error.message?.includes('Password should be at least')) {
+            errorMessage = 'A senha deve ter pelo menos 6 caracteres.';
+          } else if (error.message?.includes('Invalid password')) {
+            errorMessage = 'Senha muito fraca. Use uma senha mais forte.';
+          } else {
+            errorMessage += 'Tente novamente ou solicite um novo link.';
+          }
+
           Swal.fire({
             icon: 'error',
             title: 'Erro',
-            text: 'Não foi possível redefinir sua senha. Tente novamente.',
+            text: errorMessage,
             confirmButtonColor: '#dc3545'
+          }).then(() => {
+            if (error.message?.includes('session')) {
+              this.router.navigate(['/esqueci-senha']);
+            }
           });
-        },
-        complete: () => {
-          this.loading = false;
         }
       });
     } else {
+      // Marcar todos os campos como touched para mostrar erros
       Object.keys(this.resetForm.controls).forEach(key => {
         const control = this.resetForm.get(key);
         if (control) {
