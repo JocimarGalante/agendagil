@@ -466,10 +466,14 @@ export class AuthService {
   }
 
   // MÉTODOS DE RESET DE SENHA
+  // 🔑 MÉTODO DE RESET DE SENHA CORRIGIDO
   resetPassword(email: string): Observable<any> {
-    const redirectTo = 'https://agendagil.vercel.app/reset-senha';
+    console.log('📧 Enviando email de recuperação para:', email);
 
-    console.log('Enviando email de recuperação para:', email);
+    // 🔥 URL de redirect CORRETA - use a URL do seu site em produção
+    const redirectTo = this.getResetPasswordRedirectUrl();
+
+    console.log('📍 Redirect URL configurada:', redirectTo);
 
     return from(
       this.supabaseService.getClient().auth.api.resetPasswordForEmail(email, {
@@ -477,48 +481,144 @@ export class AuthService {
       })
     ).pipe(
       map((result: any) => {
-        console.log('Resposta completa do reset password:', result);
+        console.log('📨 Resposta do Supabase Auth:', result);
 
         if (result.error) {
-          console.error('Erro do Supabase:', result.error);
-          throw new Error('Erro ao enviar email de recuperação.');
+          console.error('❌ Erro do Supabase:', {
+            message: result.error.message,
+            status: result.error.status,
+            code: result.error.code,
+          });
+          throw new Error(this.tratarErroResetPassword(result.error));
         }
+
+        // 🔥 IMPORTANTE: O Supabase sempre retorna vazio no sucesso
+        // Se não há erro, consideramos que foi enviado
+        console.log('✅ Email de recuperação enviado com sucesso');
 
         return {
           success: true,
           message:
-            'Email de recuperação enviado com sucesso. Verifique sua caixa de entrada.',
+            'Email de recuperação enviado com sucesso! Verifique sua caixa de entrada e a pasta de spam.',
         };
       }),
       catchError((error) => {
-        console.error('Erro completo ao enviar email:', error);
-        throw new Error(
-          'Erro ao enviar email de recuperação. Tente novamente.'
+        console.error('💥 Erro completo ao enviar email:', error);
+        return throwError(
+          () =>
+            new Error(
+              this.tratarErroResetPassword(error) ||
+                'Erro ao enviar email de recuperação. Tente novamente.'
+            )
         );
       })
     );
   }
 
+  // 🔧 OBTER URL DE REDIRECT CORRETA
+  private getResetPasswordRedirectUrl(): string {
+    // Em produção, use sua URL real
+    if (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1'
+    ) {
+      // Desenvolvimento
+      return `${window.location.origin}/reset-senha`;
+    } else {
+      // Produção - substitua pela sua URL real
+      return 'https://agendagil.vercel.app/reset-senha';
+      // ou return `${window.location.origin}/reset-senha`;
+    }
+  }
+
+  // 🔧 TRATAR ERROS ESPECÍFICOS DO RESET
+  private tratarErroResetPassword(error: any): string {
+    console.log('🔧 Tratando erro de reset:', error);
+
+    if (error?.message?.includes('Email not found')) {
+      return 'Email não encontrado. Verifique se o email está correto.';
+    }
+
+    if (error?.message?.includes('rate limit')) {
+      return 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.';
+    }
+
+    if (error?.message?.includes('disabled')) {
+      return 'Conta desativada. Entre em contato com o suporte.';
+    }
+
+    if (error?.status === 422) {
+      return 'Email inválido. Verifique o formato do email.';
+    }
+
+    if (error?.status === 429) {
+      return 'Muitas tentativas. Aguarde alguns minutos.';
+    }
+
+    return (
+      error?.message ||
+      'Não foi possível enviar o email de recuperação. Tente novamente.'
+    );
+  }
+
   // Método para atualizar senha quando o usuário recebe o link
+  // 🔑 MÉTODO PARA ATUALIZAR SENHA (quando o usuário recebe o link)
   updatePassword(newPassword: string): Observable<any> {
+    console.log('🔄 Atualizando senha...');
+
     return from(
       this.supabaseService.getClient().auth.update({
         password: newPassword,
       })
     ).pipe(
       map((result: any) => {
+        console.log('📨 Resposta da atualização:', result);
+
         if (result.error) {
-          throw result.error;
+          console.error('❌ Erro ao atualizar senha:', result.error);
+          throw new Error(this.tratarErroUpdatePassword(result.error));
         }
 
+        console.log('✅ Senha atualizada com sucesso');
+
+        // Fazer logout após atualizar senha
         this.supabaseService.getClient().auth.signOut();
-        return { success: true, message: 'Senha atualizada com sucesso' };
+
+        return {
+          success: true,
+          message: 'Senha atualizada com sucesso! Faça login com a nova senha.',
+        };
       }),
       catchError((error) => {
-        console.error('Erro ao atualizar senha:', error);
-        throw error;
+        console.error('💥 Erro completo ao atualizar senha:', error);
+        return throwError(
+          () =>
+            new Error(
+              this.tratarErroUpdatePassword(error) ||
+                'Erro ao atualizar senha. Tente novamente.'
+            )
+        );
       })
     );
+  }
+
+  // 🔧 TRATAR ERROS DE ATUALIZAÇÃO DE SENHA
+  private tratarErroUpdatePassword(error: any): string {
+    console.log('🔧 Tratando erro de update password:', error);
+
+    if (error?.message?.includes('Password should be at least')) {
+      return 'A senha deve ter pelo menos 6 caracteres.';
+    }
+
+    if (error?.message?.includes('invalid')) {
+      return 'Link de recuperação inválido ou expirado. Solicite um novo link.';
+    }
+
+    if (error?.message?.includes('session')) {
+      return 'Sessão expirada. Solicite um novo link de recuperação.';
+    }
+
+    return error?.message || 'Erro ao atualizar senha. Tente novamente.';
   }
 
   // Método melhorado para verificar sessão de recuperação
@@ -526,11 +626,22 @@ export class AuthService {
     return new Observable((observer) => {
       try {
         const session = this.supabaseService.getClient().auth.session();
-        const hasValidSession = !!session && !!session.access_token;
-        observer.next(hasValidSession);
+
+        console.log('🔍 Verificando sessão de recuperação:', {
+          hasSession: !!session,
+          user: session?.user?.email,
+          expiresAt: session?.expires_at,
+          accessToken: session?.access_token ? 'EXISTS' : 'NULL',
+        });
+
+        // Considera válido se há sessão E o usuário está logado via recovery
+        const isValid = !!session && !!session.user && !!session.access_token;
+
+        console.log('✅ Sessão válida para recuperação?', isValid);
+        observer.next(isValid);
         observer.complete();
-      } catch (error) {
-        console.error('Erro ao verificar sessão:', error);
+      } catch (error: any) {
+        console.error('❌ Erro ao verificar sessão:', error);
         observer.next(false);
         observer.complete();
       }
