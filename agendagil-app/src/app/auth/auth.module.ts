@@ -8,13 +8,15 @@ import { CoreModule } from "../core/core.module";
 import { RouterModule } from '@angular/router';
 import { EsqueciSenhaComponent } from './esqueci-senha/esqueci-senha.component';
 import { NgxMaskModule } from 'ngx-mask';
+import { ResetSenhaComponent } from './reset-senha/reset-senha.component';
 
 
 @NgModule({
   declarations: [
     LoginComponent,
     RegisterComponent,
-    EsqueciSenhaComponent
+    EsqueciSenhaComponent,
+    ResetSenhaComponent
   ],
   imports: [
     CommonModule,

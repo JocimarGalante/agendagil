@@ -49,8 +49,8 @@ export class AuthService {
           throw new Error(this.tratarErroLogin(result.error));
         }
 
-        if (result.user) {
-          return from(this.buscarUsuarioPorId(result.user.id));
+        if (result.data.user) {
+          return from(this.buscarUsuarioPorId(result.data.user.id));
         }
         throw new Error('Erro ao fazer login - usuário não retornado');
       }),
@@ -68,7 +68,6 @@ export class AuthService {
       }),
       catchError((error: any) => {
         console.error('Erro completo no login:', error);
-
         return throwError(() => new Error(error.message || 'Erro desconhecido no login'));
       })
     );
@@ -88,6 +87,64 @@ export class AuthService {
       return 'Usuário não encontrado. Verifique o email digitado.';
     }
     return error.message || 'Erro ao fazer login. Tente novamente.';
+  }
+
+  // MÉTODOS DE RESET DE SENHA
+  resetPassword(email: string): Observable<any> {
+    return from(
+      this.supabaseService.getClient().auth.api.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+    ).pipe(
+      map((result: any) => {
+        if (result.error) {
+          throw result.error;
+        }
+        return result;
+      }),
+      catchError((error) => {
+        console.error('Erro ao enviar email de recuperação:', error);
+        throw error;
+      })
+    );
+  }
+
+  updatePassword(newPassword: string): Observable<any> {
+    return from(
+      this.supabaseService.getClient().auth.update({
+        password: newPassword
+      })
+    ).pipe(
+      map((result) => {
+        if (result.error) {
+          throw result.error;
+        }
+        return result;
+      }),
+      catchError((error) => {
+        console.error('Erro ao atualizar senha:', error);
+        throw error;
+      })
+    );
+  }
+
+  hasPasswordRecoverySession(): Observable<boolean> {
+    return from(Promise.resolve(this.supabaseService.getClient().auth.session())).pipe(
+      map((session: any) => {
+        return !!session;
+      })
+    );
+  }
+
+  // Método para verificar se o usuário está autenticado via Supabase
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      const session = await this.supabaseService.getClient().auth.session();
+      return !!session;
+    } catch (error) {
+      console.error('Erro ao verificar autenticação:', error);
+      return false;
+    }
   }
 
   logout(): void {
@@ -151,6 +208,7 @@ export class AuthService {
         return;
       }
 
+      console.log('Usuários no banco:', data);
     } catch (error) {
       console.error('Erro no debug:', error);
     }
@@ -159,6 +217,7 @@ export class AuthService {
   async verificarSessao(): Promise<void> {
     try {
       const session = await this.supabaseService.getClient().auth.session();
+      console.log('Sessão atual:', session);
     } catch (error) {
       console.error('Erro ao verificar sessão:', error);
     }
@@ -226,5 +285,18 @@ export class AuthService {
       hash = hash & hash;
     }
     return Math.abs(hash);
+  }
+
+  // Método para obter o usuário atual do Supabase (útil para componentes)
+  async getCurrentSupabaseUser() {
+    const session = this.supabaseService.getClient().auth.session();
+    return session?.user || null;
+  }
+
+  // Método para verificar se há uma sessão ativa
+  async getCurrentSession() {
+    const session = await this.supabaseService.getClient().auth.session();
+
+    return session;
   }
 }

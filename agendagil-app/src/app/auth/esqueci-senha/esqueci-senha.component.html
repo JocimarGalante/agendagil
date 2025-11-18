@@ -23,20 +23,19 @@
             placeholder="Digite seu email"
             formControlName="email"
             [ngClass]="{
-              'is-invalid':
-                senhaForm.get('email')?.invalid && senhaForm.get('email')?.touched
+              'is-invalid': email && email.invalid && email.touched,
+              'is-valid': email && email.valid && email.touched
             }"
+            [disabled]="loading"
           />
           <div
-            *ngIf="
-              senhaForm.get('email')?.invalid && senhaForm.get('email')?.touched
-            "
+            *ngIf="email && email.invalid && email.touched"
             class="invalid-feedback"
           >
-            <div *ngIf="senhaForm.get('email')?.errors?.required">
+            <div *ngIf="email.hasError('required')">
               Email é obrigatório.
             </div>
-            <div *ngIf="senhaForm.get('email')?.errors?.email">
+            <div *ngIf="email.hasError('email')">
               Digite um email válido.
             </div>
           </div>
@@ -45,21 +44,27 @@
         <button
           type="submit"
           class="btn btn-success w-100"
-          [disabled]="senhaForm.invalid"
+          [disabled]="senhaForm.invalid || loading"
           style="background-color: #28b463"
         >
-          Enviar link de recuperação
+          <span *ngIf="!loading">Enviar link de recuperação</span>
+          <span *ngIf="loading">
+            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            Enviando...
+          </span>
         </button>
       </form>
 
       <div class="text-center mt-3 border-top pt-3">
-        <a
-          routerLink="/"
+        <button
+          type="button"
           class="btn btn-outline-light btn-sm px-4"
+          [disabled]="loading"
           style="border-color: #28b463; color: #28b463"
+          (click)="voltarParaLogin()"
         >
           Voltar ao login
-        </a>
+        </button>
       </div>
     </div>
   </div>

@@ -14,11 +14,13 @@ import { ConsultasComponent } from 'pages/dashboard-paciente/consultas/consultas
 import { NotificacoesComponent } from 'pages/dashboard-paciente/notificacoes/notificacoes.component';
 import { HistoricoComponent } from 'pages/dashboard-paciente/historico/historico.component';
 import { AgendaFormComponent } from 'scheduling/agenda-form/agenda-form.component';
+import { ResetSenhaComponent } from '@auth/reset-senha/reset-senha.component';
 
 const routes: Routes = [
   { path: '', component: LoginComponent },
   { path: 'cadastro', component: RegisterComponent },
   { path: 'esqueci-senha', component: EsqueciSenhaComponent },
+  { path: 'reset-senha', component: ResetSenhaComponent },
   {
     path: 'dashboard-paciente',
     component: DashboardPacienteComponent,

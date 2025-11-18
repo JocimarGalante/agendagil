@@ -1,0 +1,122 @@
+<div
+  class="d-flex flex-column vh-100"
+  style="background-color: #1b4f72; padding: 20px;"
+>
+  <div class="d-flex justify-content-center align-items-center flex-grow-1">
+    <div
+      class="card p-4 shadow"
+      style="width: 100%; max-width: 400px; border-radius: 10px"
+    >
+      <div class="text-center mb-3">
+        <img src="../../../assets/logo.jpg" alt="AgendAgil Logo" width="180" />
+      </div>
+
+      <h5 class="text-white text-center mb-3">Redefinir Senha</h5>
+
+      <div *ngIf="showForm; else invalidLink">
+        <p class="text-white text-center small mb-4">
+          Digite sua nova senha abaixo.
+        </p>
+
+        <form [formGroup]="resetForm" (ngSubmit)="onSubmit()">
+          <!-- Nova Senha -->
+          <div class="mb-3">
+            <label for="password" class="form-label text-white">Nova Senha</label>
+            <input
+              type="password"
+              id="password"
+              class="form-control"
+              placeholder="Digite a nova senha"
+              formControlName="password"
+              [ngClass]="{
+                'is-invalid': password?.invalid && password?.touched,
+                'is-valid': password?.valid && password?.touched
+              }"
+              [disabled]="loading"
+            />
+            <div
+              *ngIf="password?.invalid && password?.touched"
+              class="invalid-feedback"
+            >
+              <div *ngIf="password?.hasError('required')">
+                Senha é obrigatória.
+              </div>
+              <div *ngIf="password?.hasError('minlength')">
+                A senha deve ter pelo menos 6 caracteres.
+              </div>
+            </div>
+          </div>
+
+          <!-- Confirmar Senha -->
+          <div class="mb-3">
+            <label for="confirmPassword" class="form-label text-white">Confirmar Senha</label>
+            <input
+              type="password"
+              id="confirmPassword"
+              class="form-control"
+              placeholder="Confirme a nova senha"
+              formControlName="confirmPassword"
+              [ngClass]="{
+                'is-invalid': confirmPassword?.invalid && confirmPassword?.touched,
+                'is-valid': confirmPassword?.valid && confirmPassword?.touched
+              }"
+              [disabled]="loading"
+            />
+            <div
+              *ngIf="confirmPassword?.invalid && confirmPassword?.touched"
+              class="invalid-feedback"
+            >
+              <div *ngIf="confirmPassword?.hasError('required')">
+                Confirmação de senha é obrigatória.
+              </div>
+              <div *ngIf="confirmPassword?.hasError('passwordMismatch')">
+                As senhas não coincidem.
+              </div>
+            </div>
+          </div>
+
+          <!-- Botão de Submit -->
+          <button
+            type="submit"
+            class="btn btn-success w-100 py-2"
+            [disabled]="resetForm.invalid || loading"
+            style="background-color: #28b463"
+          >
+            <span *ngIf="!loading">Redefinir Senha</span>
+            <span *ngIf="loading">
+              <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+              Redefinindo...
+            </span>
+          </button>
+        </form>
+      </div>
+
+      <ng-template #invalidLink>
+        <div class="text-center text-white">
+          <div *ngIf="!loading" class="mb-3">
+            <i class="bi bi-exclamation-triangle fs-1 text-warning"></i>
+            <p class="mt-2">Verificando link de recuperação...</p>
+          </div>
+          <div *ngIf="loading" class="mb-3">
+            <div class="spinner-border text-light" role="status">
+              <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-2">Verificando...</p>
+          </div>
+        </div>
+      </ng-template>
+
+      <div class="text-center mt-4 border-top pt-3">
+        <a
+          routerLink="/login"
+          class="btn btn-outline-light btn-sm px-4"
+          style="border-color: #28b463; color: #28b463"
+        >
+          Voltar ao login
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <app-footer></app-footer>
+</div>
