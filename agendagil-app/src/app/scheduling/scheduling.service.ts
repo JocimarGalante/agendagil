@@ -256,7 +256,6 @@ export class SchedulingService {
   }
 
   getHorariosDisponiveis(medicoId: string, data: string): Observable<string[]> {
-    console.log('🔍 Buscando horários para médico ID:', medicoId);
 
     // Primeiro, buscar o nome do médico pelo ID
     return from(
@@ -274,7 +273,6 @@ export class SchedulingService {
         }
 
         const medico = medicoResult.data;
-        console.log('👨‍⚕️ Médico encontrado:', medico);
 
         // Buscar horários ocupados usando o ID CORRETO do médico
         return from(
@@ -294,8 +292,6 @@ export class SchedulingService {
             const horariosLivres = todosHorarios.filter(
               (horario) => !horariosOcupados.includes(horario)
             );
-
-            console.log('✅ Horários livres:', horariosLivres);
             return horariosLivres;
           })
         );

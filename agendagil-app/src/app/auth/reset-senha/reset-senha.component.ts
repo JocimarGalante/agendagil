@@ -29,10 +29,6 @@ export class ResetSenhaComponent implements OnInit {
 
   ngOnInit(): void {
     this.checkRecoverySession();
-
-    // Debug: log da URL atual
-    console.log('URL atual:', window.location.href);
-    console.log('Hash:', window.location.hash);
   }
 
   private checkRecoverySession(): void {
@@ -40,7 +36,6 @@ export class ResetSenhaComponent implements OnInit {
 
     this.authService.hasPasswordRecoverySession().subscribe({
       next: (hasSession) => {
-        console.log('Sessão de recuperação válida:', hasSession);
         this.showForm = hasSession;
         this.checkingSession = false;
 
@@ -105,11 +100,8 @@ export class ResetSenhaComponent implements OnInit {
       this.loading = true;
       const newPassword = this.resetForm.get('password')?.value;
 
-      console.log('Tentando atualizar senha...');
-
       this.authService.updatePassword(newPassword).subscribe({
         next: (result) => {
-          console.log('Senha atualizada com sucesso:', result);
 
           Swal.fire({
             icon: 'success',

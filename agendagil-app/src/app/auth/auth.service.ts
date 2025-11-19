@@ -39,7 +39,6 @@ export class AuthService {
 
   // 🔑 MÉTODO DE LOGIN
   login(email: string, senha: string): Observable<UsuarioBase> {
-    console.log('🔐 Tentando login para:', email);
 
     const loginPromise = this.supabaseService.getClient().auth.signIn({
       email,
@@ -48,7 +47,6 @@ export class AuthService {
 
     return from(loginPromise).pipe(
       switchMap((result: any) => {
-        console.log('📨 Resposta do Supabase Auth:', result);
 
         if (result.error) {
           console.error('❌ Erro no login:', result.error);
@@ -56,7 +54,6 @@ export class AuthService {
         }
 
         if (result.user) {
-          console.log('✅ Usuário autenticado. ID:', result.user.id);
           return from(this.buscarUsuarioPorId(result.user.id));
         }
 
@@ -72,7 +69,6 @@ export class AuthService {
           );
         }
 
-        console.log('✅ Login bem sucedido. Usuário:', usuario.nome);
 
         const expirationTime = new Date().getTime() + 60 * 60 * 1000;
         localStorage.setItem('usuarioLogado', JSON.stringify(usuario));
@@ -96,7 +92,6 @@ export class AuthService {
     senha: string,
     dadosUsuario: any
   ): Observable<any> {
-    console.log('📝 Iniciando registro para:', email);
 
     return from(
       this.supabaseService.getClient().auth.signUp({
@@ -105,11 +100,6 @@ export class AuthService {
       })
     ).pipe(
       switchMap((authResult: any) => {
-        console.log('🔐 Resposta do Auth:', {
-          user: authResult.user?.id,
-          error: authResult.error,
-          session: authResult.session ? 'EXISTE' : 'NÃO EXISTE',
-        });
 
         if (authResult.error) {
           throw new Error(this.tratarErroRegistro(authResult.error));
@@ -120,7 +110,6 @@ export class AuthService {
         }
 
         const userId = authResult.user.id;
-        console.log('✅ Usuário Auth criado. ID:', userId);
 
         return this.estrategiaRegistroDefinitiva(
           userId,
@@ -145,15 +134,9 @@ export class AuthService {
     dadosUsuario: any,
     authResult: any
   ): Observable<any> {
-    console.log('🎯 Iniciando estratégia definitiva de registro...');
 
     return this.verificarUsuarioExistente(userId).pipe(
       switchMap((usuarioExiste) => {
-        console.log(
-          usuarioExiste
-            ? '⚠️ Usuário JÁ EXISTE na tabela'
-            : '📝 Usuário NÃO EXISTE na tabela'
-        );
 
         if (usuarioExiste) {
           return this.fazerUpdateUsuario(
@@ -208,7 +191,6 @@ export class AuthService {
     dadosUsuario: any,
     authResult: any
   ): Observable<any> {
-    console.log('📝 Executando INSERT...');
 
     const perfilUsuario = this.criarPerfilCompleto(
       userId,
@@ -236,15 +218,10 @@ export class AuthService {
           }
           throw result.error;
         }
-
-        console.log('✅ INSERT realizado com sucesso!');
         return this.criarRespostaSucesso(result.data, authResult);
       }),
       catchError((error: any) => {
         if (error.message === 'USUARIO_CRIADO_DURANTE_PROCESSO') {
-          console.log(
-            '🔄 Usuário foi criado durante o processo, fazendo UPDATE...'
-          );
           return this.fazerUpdateUsuario(
             userId,
             email,
@@ -264,7 +241,6 @@ export class AuthService {
     dadosUsuario: any,
     authResult: any
   ): Observable<any> {
-    console.log('🔄 Executando UPDATE...');
 
     const perfilUsuario = this.criarPerfilCompleto(
       userId,
@@ -289,7 +265,6 @@ export class AuthService {
           throw result.error;
         }
 
-        console.log('✅ UPDATE realizado com sucesso!');
         return this.buscarUsuarioAtualizado(userId, authResult);
       })
     );
@@ -302,7 +277,6 @@ export class AuthService {
     dadosUsuario: any,
     authResult: any
   ): Observable<any> {
-    console.log('🆘 Executando estratégia fallback...');
 
     const perfilUsuario = this.criarPerfilCompleto(
       userId,
@@ -324,7 +298,6 @@ export class AuthService {
           throw new Error(`Falha crítica no registro: ${result.error.message}`);
         }
 
-        console.log('✅ UPSERT fallback realizado com sucesso!');
         return this.criarRespostaSucesso(result.data, authResult);
       })
     );
@@ -421,7 +394,6 @@ export class AuthService {
 
   // 🔧 TRATAR ERROS DE REGISTRO
   private tratarErroRegistro(error: any): string {
-    console.log('🔧 Tratando erro:', error);
 
     if (error.message?.includes('User already registered')) {
       return 'Este email já está cadastrado. Tente fazer login.';
@@ -461,10 +433,8 @@ export class AuthService {
 
   // 🔑 MÉTODO PRINCIPAL DE RESET DE SENHA
   resetPassword(email: string): Observable<any> {
-    console.log('📧 Enviando email de recuperação para:', email);
 
     const redirectTo = this.getResetPasswordRedirectUrl();
-    console.log('📍 Redirect URL:', redirectTo);
 
     return from(
       this.supabaseService.getClient().auth.api.resetPasswordForEmail(email, {
@@ -472,15 +442,11 @@ export class AuthService {
       })
     ).pipe(
       map((result: any) => {
-        console.log('📨 Resposta do Supabase:', result);
 
         if (result.error) {
           console.error('❌ Erro do Supabase:', result.error);
           throw new Error(this.tratarErroResetPassword(result.error));
         }
-
-        // Supabase não retorna dados no sucesso, apenas erro
-        console.log('✅ Solicitação de reset enviada com sucesso');
         return {
           success: true,
           message: 'Email de recuperação enviado! Verifique sua caixa de entrada e a pasta de spam.'
@@ -512,7 +478,6 @@ export class AuthService {
 
   // 🔑 ATUALIZAR SENHA (quando o usuário clica no link do email)
   updatePassword(newPassword: string): Observable<any> {
-    console.log('🔄 Atualizando senha...');
 
     return from(
       this.supabaseService.getClient().auth.update({
@@ -520,14 +485,11 @@ export class AuthService {
       })
     ).pipe(
       map((result: any) => {
-        console.log('📨 Resposta da atualização:', result);
 
         if (result.error) {
           console.error('❌ Erro ao atualizar senha:', result.error);
           throw new Error(this.tratarErroUpdatePassword(result.error));
         }
-
-        console.log('✅ Senha atualizada com sucesso');
 
         // Fazer logout após atualizar senha
         this.supabaseService.getClient().auth.signOut();
@@ -553,15 +515,8 @@ export class AuthService {
       try {
         const session = this.supabaseService.getClient().auth.session();
 
-        console.log('🔍 Verificando sessão:', {
-          hasSession: !!session,
-          user: session?.user?.email,
-          accessToken: session?.access_token ? 'EXISTS' : 'NULL'
-        });
-
         const isValid = !!session && !!session.user && !!session.access_token;
 
-        console.log('✅ Sessão válida para recuperação?', isValid);
         observer.next(isValid);
         observer.complete();
       } catch (error: any) {
@@ -593,8 +548,6 @@ export class AuthService {
 
   // 🔧 TRATAR ERROS DE RESET DE SENHA
   private tratarErroResetPassword(error: any): string {
-    console.log('🔧 Tratando erro de reset:', error);
-
     const message = error?.message || '';
 
     if (message.includes('Email not found')) {
@@ -618,7 +571,6 @@ export class AuthService {
 
   // 🔧 TRATAR ERROS DE ATUALIZAÇÃO DE SENHA
   private tratarErroUpdatePassword(error: any): string {
-    console.log('🔧 Tratando erro de update password:', error);
 
     const message = error?.message || '';
 
@@ -639,10 +591,8 @@ export class AuthService {
 
   // 🔍 MÉTODO DE DEBUG PARA RESET DE SENHA
   debugResetPassword(email: string): Observable<any> {
-    console.log('🔍 Debug reset password para:', email);
 
     const redirectTo = this.getResetPasswordRedirectUrl();
-    console.log('📍 Redirect URL:', redirectTo);
 
     return from(
       this.supabaseService.getClient().auth.api.resetPasswordForEmail(email, {
@@ -650,14 +600,11 @@ export class AuthService {
       })
     ).pipe(
       map((result: any) => {
-        console.log('📨 Resposta COMPLETA do Supabase:', result);
 
         if (result.error) {
           console.error('❌ Erro detalhado:', result.error);
           throw result.error;
         }
-
-        console.log('✅ Email de reset enviado com sucesso');
         return { success: true, message: 'Debug: Email enviado com sucesso' };
       })
     );
@@ -665,7 +612,6 @@ export class AuthService {
 
   // 🔑 MÉTODO PARA REENVIAR EMAIL DE CONFIRMAÇÃO
   reenviarEmailConfirmacao(email: string): Observable<any> {
-    console.log('📧 Reenviando email de confirmação para:', email);
 
     return new Observable((observer) => {
       observer.next({
@@ -845,7 +791,6 @@ export class AuthService {
 
   async confirmarEmailManualmente(email: string): Promise<boolean> {
     try {
-      console.log('🛠️  Confirmando email manualmente para:', email);
 
       const { error } = await this.supabaseService
         .getClient()
@@ -857,8 +802,6 @@ export class AuthService {
         console.error('Erro ao confirmar email:', error);
         return false;
       }
-
-      console.log('✅ Email confirmado manualmente para:', email);
       return true;
     } catch (error) {
       console.error('Erro ao confirmar email manualmente:', error);
