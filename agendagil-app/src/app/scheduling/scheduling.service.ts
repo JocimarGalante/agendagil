@@ -108,7 +108,10 @@ export class SchedulingService {
     );
   }
 
-  private tentarAgendamentoAtomico(agendamento: Agendamento, pacienteId: string): Observable<Agendamento> {
+  private tentarAgendamentoAtomico(
+    agendamento: Agendamento,
+    pacienteId: string
+  ): Observable<Agendamento> {
     const consultaSupabase = {
       paciente: agendamento.paciente,
       paciente_id: pacienteId,
@@ -137,7 +140,11 @@ export class SchedulingService {
           // Verificar se é erro de duplicação (código 23505 = unique_violation)
           if (result.error.code === '23505') {
             throw new Error(
-              `O médico ${agendamento.medico} já possui uma consulta agendada para ${this.formatarData(agendamento.data)} às ${agendamento.hora}. Por favor, escolha outro horário.`
+              `O médico ${
+                agendamento.medico
+              } já possui uma consulta agendada para ${this.formatarData(
+                agendamento.data
+              )} às ${agendamento.hora}. Por favor, escolha outro horário.`
             );
           }
 
@@ -249,54 +256,52 @@ export class SchedulingService {
   }
 
   getHorariosDisponiveis(medicoId: string, data: string): Observable<string[]> {
-    if (!medicoId || !data) {
-      console.error('Parâmetros inválidos:', { medicoId, data });
-      return of(this.getHorariosPadrao());
-    }
+    console.log('🔍 Buscando horários para médico ID:', medicoId);
 
+    // Primeiro, buscar o nome do médico pelo ID
     return from(
       this.supabaseService
         .getClient()
-        .from('disponibilidades_medicos')
-        .select('horarios_disponiveis')
-        .eq('medico_id', medicoId)
-        .eq('data', data)
+        .from('medicos')
+        .select('nome, id')
+        .eq('id', medicoId)
         .single()
     ).pipe(
-      switchMap((disponibilidadeResult: any) => {
-        let horariosDisponiveis = this.getHorariosPadrao();
-
-        if (disponibilidadeResult.data) {
-          horariosDisponiveis =
-            disponibilidadeResult.data.horarios_disponiveis ||
-            horariosDisponiveis;
+      switchMap((medicoResult: any) => {
+        if (medicoResult.error || !medicoResult.data) {
+          console.error('Médico não encontrado com ID:', medicoId);
+          return of(this.getHorariosPadrao());
         }
 
-        // Buscar horários já ocupados pelo médico
+        const medico = medicoResult.data;
+        console.log('👨‍⚕️ Médico encontrado:', medico);
+
+        // Buscar horários ocupados usando o ID CORRETO do médico
         return from(
           this.supabaseService
             .getClient()
             .from('consultas')
             .select('hora')
-            .eq('medico_id', medicoId)
+            .eq('medico_id', medico.id) // ← Usar o ID do médico da tabela medicos
             .eq('data', data)
-            .in('status', [1, 2]) // Status: Agendada (1) ou Confirmada (2)
+            .in('status', [1, 2])
         ).pipe(
           map((consultasResult: any) => {
             const horariosOcupados =
               consultasResult.data?.map((consulta: any) => consulta.hora) || [];
+            const todosHorarios = this.getHorariosPadrao();
 
-            // Filtrar horários disponíveis removendo os ocupados
-            const horariosLivres = horariosDisponiveis.filter(
-              (horario: string) => !horariosOcupados.includes(horario)
+            const horariosLivres = todosHorarios.filter(
+              (horario) => !horariosOcupados.includes(horario)
             );
 
+            console.log('✅ Horários livres:', horariosLivres);
             return horariosLivres;
           })
         );
       }),
       catchError((error) => {
-        console.error('Erro ao carregar horários disponíveis:', error);
+        console.error('Erro ao buscar médico:', error);
         return of(this.getHorariosPadrao());
       })
     );
