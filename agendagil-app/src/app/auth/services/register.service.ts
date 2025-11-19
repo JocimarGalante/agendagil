@@ -1,4 +1,3 @@
-// src/app/auth/register.service.ts
 import { Injectable } from '@angular/core';
 import { Observable, from } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
@@ -14,7 +13,6 @@ export class RegisterService {
   constructor(private supabaseService: SupabaseService) {}
 
   registrarUsuario(dados: UsuarioBase, tipoUsuario: TipoUsuario, senha: string): Observable<UsuarioBase> {
-    // Primeiro cria o usuário no auth do Supabase
     return from(
       this.supabaseService.getClient().auth.signUp({
         email: dados.email,
@@ -25,7 +23,6 @@ export class RegisterService {
         if (result.error) throw new Error(result.error.message);
 
         if (result.user) {
-          // Depois cria o perfil do usuário na tabela usuarios
           return this.criarPerfilUsuario(result.user.id, dados, tipoUsuario);
         }
         throw new Error('Erro ao criar usuário');
@@ -46,9 +43,8 @@ export class RegisterService {
       atualizadoEm: new Date().toISOString()
     };
 
-    // Converte para o formato do Supabase
     const usuarioSupabase = this.toSupabaseUsuario(usuarioCompleto);
-    usuarioSupabase.id = userId; // Mantém o UUID original
+    usuarioSupabase.id = userId;
 
     return from(
       this.supabaseService.getClient()
@@ -64,7 +60,6 @@ export class RegisterService {
     );
   }
 
-  // Métodos de conversão
   private fromSupabaseUsuario(usuario: any): UsuarioBase {
     const base: any = {
       id: this.parseId(usuario.id),
@@ -82,7 +77,6 @@ export class RegisterService {
       cep: usuario.cep
     };
 
-    // Adiciona campos específicos baseados no tipo
     switch (usuario.tipo) {
       case TipoUsuario.PACIENTE:
         base.cpf = usuario.cpf;
@@ -132,7 +126,6 @@ export class RegisterService {
       cep: usuario.cep
     };
 
-    // Adiciona campos específicos
     const usuarioAny = usuario as any;
     if (usuarioAny.cpf) base.cpf = usuarioAny.cpf;
     if (usuarioAny.dataNascimento) base.data_nascimento = usuarioAny.dataNascimento;

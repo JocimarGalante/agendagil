@@ -1,5 +1,4 @@
 <div class="d-flex min-vh-100 flex-column flex-md-row">
-  <!-- Sidebar -->
   <div
     [class.collapsed]="isCollapsed"
     [ngClass]="{
@@ -11,7 +10,6 @@
       'd-block': !isMobile || !isCollapsed
     }"
   >
-    <!-- Título + Botão -->
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h5 class="m-0">Olá, {{ primeiroNome }}!</h5>
       <button
@@ -21,8 +19,6 @@
         <i class="bi" [ngClass]="isCollapsed ? 'bi-list' : 'bi-x'"></i>
       </button>
     </div>
-
-    <!-- Menu -->
     <ul class="nav flex-column">
       <li class="nav-item">
         <a class="nav-link text-white" routerLink="agendar">
@@ -56,10 +52,7 @@
       </li>
     </ul>
   </div>
-
-  <!-- Conteúdo principal -->
   <div class="flex-grow-1 p-4 bg-light">
-    <!-- Botão toggle visível só no mobile -->
     <button
       class="btn btn-outline-primary mb-2 d-md-none"
       (click)="toggleSidebar()"

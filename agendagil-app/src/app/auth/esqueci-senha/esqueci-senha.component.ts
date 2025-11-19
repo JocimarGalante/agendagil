@@ -73,7 +73,6 @@ export class EsqueciSenhaComponent implements OnInit {
         }
       });
     } else {
-      // Marcar todos os campos como touched para mostrar erros
       Object.keys(this.senhaForm.controls).forEach(key => {
         const control = this.senhaForm.get(key);
         if (control) {

@@ -122,7 +122,6 @@ export class ConsultasComponent implements OnInit {
     const dataAtual = new Date();
     const dataMinima = dataAtual.toISOString().split('T')[0];
 
-    // Calcular data máxima (3 meses a partir de hoje)
     const dataMaxima = new Date();
     dataMaxima.setMonth(dataMaxima.getMonth() + 3);
     const dataMaximaStr = dataMaxima.toISOString().split('T')[0];
@@ -131,7 +130,6 @@ export class ConsultasComponent implements OnInit {
       title: 'Reagendar Consulta',
       html: `
         <div class="reagendamento-container">
-          <!-- Informações da Consulta Atual -->
           <div class="consulta-atual card border-warning mb-4">
             <div class="card-header bg-warning text-dark">
               <i class="bi bi-info-circle me-2"></i>
@@ -152,7 +150,6 @@ export class ConsultasComponent implements OnInit {
             </div>
           </div>
 
-          <!-- Novo Agendamento -->
           <div class="novo-agendamento card border-primary">
             <div class="card-header bg-primary text-white">
               <i class="bi bi-calendar-plus me-2"></i>
@@ -184,7 +181,6 @@ export class ConsultasComponent implements OnInit {
                 </div>
               </div>
 
-              <!-- Preview da Nova Data -->
               <div class="mt-3 p-3 bg-light rounded" id="previewNovaData">
                 <small class="text-muted">
                   <i class="bi bi-eye me-1"></i>

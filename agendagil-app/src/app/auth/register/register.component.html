@@ -7,15 +7,12 @@
       class="card p-4 shadow"
       style="width: 100%; max-width: 500px; border-radius: 10px"
     >
-      <!-- Logo -->
       <div class="text-center mb-4">
         <img src="../../../assets/logo.jpg" alt="AgendAgil Logo" width="200" />
         <h4 class="text-main mt-2">Criar Conta</h4>
       </div>
 
-      <!-- Formulário de Registro -->
       <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-        <!-- Tipo de Usuário -->
         <div class="mb-3">
           <label for="tipo" class="form-label fw-semibold"
             >Tipo de Usuário *</label
@@ -36,7 +33,6 @@
           </div>
         </div>
 
-        <!-- Nome Completo -->
         <div class="mb-3">
           <label for="nome" class="form-label fw-semibold">Nome completo *</label>
           <input
@@ -52,7 +48,6 @@
           </div>
         </div>
 
-        <!-- Email -->
         <div class="mb-3">
           <label for="email" class="form-label fw-semibold">Email *</label>
           <input
@@ -68,7 +63,6 @@
           </div>
         </div>
 
-        <!-- Senha -->
         <div class="mb-3">
           <label for="senha" class="form-label fw-semibold">Senha *</label>
           <input
@@ -83,7 +77,6 @@
             {{ getMensagemErro('senha') }}
           </div>
 
-          <!-- Indicador de força da senha -->
           <div *ngIf="registerForm.get('senha')?.value" class="mt-2">
             <div class="progress" style="height: 6px;">
               <div
@@ -98,7 +91,6 @@
           </div>
         </div>
 
-        <!-- Campos de contato (opcionais para todos) -->
         <div class="row mb-3">
           <div class="col-md-6">
             <label for="telefone" class="form-label">Telefone</label>
@@ -156,9 +148,6 @@
           />
         </div>
 
-        <!-- Campos adicionais baseados no tipo de usuário -->
-
-        <!-- PACIENTE -->
         <div *ngIf="tipoUsuarioSelecionado === tipoUsuarioEnum.PACIENTE" class="border-top pt-3">
           <h6 class="text-main mb-3">Dados do Paciente</h6>
 
@@ -208,8 +197,6 @@
             </select>
           </div>
         </div>
-
-        <!-- PROFISSIONAL AUTÔNOMO -->
         <div
           *ngIf="tipoUsuarioSelecionado === tipoUsuarioEnum.PROFISSIONAL_AUTONOMO"
           class="border-top pt-3"
@@ -317,7 +304,6 @@
           </div>
         </div>
 
-        <!-- CLÍNICA -->
         <div *ngIf="tipoUsuarioSelecionado === tipoUsuarioEnum.CLINICA" class="border-top pt-3">
           <h6 class="text-main mb-3">Dados da Clínica</h6>
 
@@ -436,7 +422,6 @@
           </div>
         </div>
 
-        <!-- Planos pagos para Clínica e Profissional Autônomo -->
         <div
           *ngIf="
             tipoUsuarioSelecionado === tipoUsuarioEnum.CLINICA ||
@@ -483,7 +468,6 @@
           </div>
         </div>
 
-        <!-- Botão de Submit -->
         <div class="mt-4">
           <button
             type="submit"
@@ -500,7 +484,6 @@
         </div>
       </form>
 
-      <!-- Link para login -->
       <div class="text-center mt-4 border-top pt-3">
         <span class="text-muted d-block mb-2">Já tem uma conta?</span>
         <a
@@ -512,7 +495,5 @@
       </div>
     </div>
   </div>
-
-  <!-- Footer -->
   <app-footer></app-footer>
 </div>

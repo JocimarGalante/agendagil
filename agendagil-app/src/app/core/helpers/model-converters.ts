@@ -1,10 +1,8 @@
-// src/app/core/helpers/model-converters.ts
 import { UsuarioBase } from '@models/usuario/usuario-base.model';
 import { TipoUsuario } from '@models/usuario/tipo-usuario.enum';
 import { Consulta } from '@models/consulta.model';
 import { Especialidade, Medico, Agendamento } from '@models/agendamento.model';
 
-// Interfaces para o Supabase
 export interface UsuarioSupabase {
   id: string;
   nome: string;
@@ -21,7 +19,6 @@ export interface UsuarioSupabase {
   estado?: string;
   cep?: string;
 
-  // Campos específicos
   cpf?: string;
   data_nascimento?: string;
   genero?: string;
@@ -72,12 +69,10 @@ export interface MedicoSupabase {
 }
 
 export class ModelConverter {
-  // Método auxiliar para garantir que o valor seja string válida para UUID
   private static ensureString(value: any): string {
     if (value === null || value === undefined) return '';
     if (typeof value === 'string') return value;
 
-    // Se for número, converter para string mas gerar warning
     if (typeof value === 'number') {
       console.warn('Número detectado onde era esperado UUID string:', value);
       return value.toString();
@@ -86,7 +81,6 @@ export class ModelConverter {
     return String(value);
   }
 
-  // Método para gerar UUID v4
   static generateUUID(): string {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       const r = Math.random() * 16 | 0;
@@ -95,10 +89,9 @@ export class ModelConverter {
     });
   }
 
-  // Conversão de Usuário
   static fromSupabaseUsuario(usuario: UsuarioSupabase): UsuarioBase {
     const base: any = {
-      id: this.ensureString(usuario.id), // Garantir que seja string
+      id: this.ensureString(usuario.id),
       nome: usuario.nome,
       email: usuario.email,
       tipo: usuario.tipo,
@@ -113,7 +106,6 @@ export class ModelConverter {
       cep: usuario.cep,
     };
 
-    // Adiciona campos específicos baseados no tipo
     switch (usuario.tipo) {
       case TipoUsuario.PACIENTE:
         base.cpf = usuario.cpf;
@@ -148,7 +140,7 @@ export class ModelConverter {
 
   static toSupabaseUsuario(usuario: UsuarioBase): UsuarioSupabase {
     const base: any = {
-      id: this.ensureString(usuario.id), // Garantir que seja string
+      id: this.ensureString(usuario.id),
       nome: usuario.nome,
       email: usuario.email,
       tipo: usuario.tipo,
@@ -163,7 +155,6 @@ export class ModelConverter {
       cep: usuario.cep,
     };
 
-    // Adiciona campos específicos
     const usuarioAny = usuario as any;
     if (usuarioAny.cpf) base.cpf = usuarioAny.cpf;
     if (usuarioAny.dataNascimento)
@@ -191,10 +182,9 @@ export class ModelConverter {
     return base as UsuarioSupabase;
   }
 
-  // Conversão de Consulta - CORRIGIDA para usar propriedades existentes
   static fromSupabaseConsulta(consulta: ConsultaSupabase): Consulta {
     return {
-      id: this.ensureString(consulta.id), // Garantir que seja string
+      id: this.ensureString(consulta.id),
       paciente: consulta.paciente,
       medico: consulta.medico,
       especialidade: consulta.especialidade,
@@ -206,7 +196,6 @@ export class ModelConverter {
   }
 
   static toSupabaseConsulta(consulta: Consulta): ConsultaSupabase {
-    // Se o ID for numérico ou inválido, gerar um UUID
     let id = consulta.id;
     if (!id || this.isNumber(id)) {
       console.warn('ID inválido ou numérico detectado, gerando UUID:', id);
@@ -214,13 +203,13 @@ export class ModelConverter {
     }
 
     return {
-      id: this.ensureString(id), // Garantir que seja string válida
+      id: this.ensureString(id),
       paciente: consulta.paciente,
-      paciente_id: '', // Será preenchido pelo service - CORREÇÃO: usar string vazia
+      paciente_id: '',
       medico: consulta.medico,
-      medico_id: '', // Será preenchido pelo service - CORREÇÃO: usar string vazia
+      medico_id: '',
       especialidade: consulta.especialidade,
-      especialidade_id: '', // Será preenchido pelo service - CORREÇÃO: usar string vazia
+      especialidade_id: '',
       local: consulta.local,
       data: consulta.data,
       hora: consulta.hora,
@@ -228,16 +217,15 @@ export class ModelConverter {
     } as ConsultaSupabase;
   }
 
-  // Conversão de Agendamento - CORRIGIDA para garantir strings
   static fromSupabaseAgendamento(consulta: ConsultaSupabase): Agendamento {
     return {
-      id: this.ensureString(consulta.id), // Garantir que seja string
+      id: this.ensureString(consulta.id),
       paciente: consulta.paciente,
-      pacienteId: this.ensureString(consulta.paciente_id), // Garantir que seja string
+      pacienteId: this.ensureString(consulta.paciente_id),
       medico: consulta.medico,
-      medicoId: this.ensureString(consulta.medico_id), // Garantir que seja string
+      medicoId: this.ensureString(consulta.medico_id),
       especialidade: consulta.especialidade,
-      especialidadeId: this.ensureString(consulta.especialidade_id), // Garantir que seja string
+      especialidadeId: this.ensureString(consulta.especialidade_id),
       local: consulta.local,
       data: consulta.data,
       hora: consulta.hora,
@@ -245,7 +233,6 @@ export class ModelConverter {
     } as Agendamento;
   }
 
-  // Conversão de Especialidade - CORRIGIDA para garantir strings
   static fromSupabaseEspecialidade(
     especialidade: EspecialidadeSupabase
   ): Especialidade {
@@ -255,24 +242,21 @@ export class ModelConverter {
     } as Especialidade;
   }
 
-  // Conversão de Médico - CORRIGIDA para garantir strings
   static fromSupabaseMedico(medico: MedicoSupabase): Medico {
     return {
-      id: this.ensureString(medico.id), // Garantir que seja string
+      id: this.ensureString(medico.id),
       nome: medico.nome,
-      especialidadeId: this.ensureString(medico.especialidade_id), // Garantir que seja string
+      especialidadeId: this.ensureString(medico.especialidade_id),
       crm: medico.crm,
       local: medico.local,
     } as Medico;
   }
 
-  // Método para verificar se é número
   private static isNumber(value: any): boolean {
     if (value === null || value === undefined) return false;
     return !isNaN(parseFloat(value)) && isFinite(value);
   }
 
-  // Método para compatibilidade (se ainda precisar em algum lugar)
   static parseId(id: string): number {
     if (!id) return 0;
     if (!isNaN(Number(id))) return Number(id);
@@ -286,22 +270,18 @@ export class ModelConverter {
     return Math.abs(hash);
   }
 
-  // Método para validar UUID
   static isValidUUID(uuid: string): boolean {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);
   }
 
-  // Método para migrar IDs numéricos para UUID
   static migrateNumericId(numericId: number | string): string {
     if (typeof numericId === 'string' && this.isValidUUID(numericId)) {
-      return numericId; // Já é UUID válido
+      return numericId;
     }
 
-    // Se for número ou string numérica, gerar UUID determinístico
     const num = typeof numericId === 'string' ? parseInt(numericId, 10) : numericId;
 
-    // Gerar UUID determinístico baseado no número
     const hex = num.toString(16).padStart(8, '0');
     return `00000000-0000-4000-8000-${hex.padStart(12, '0')}`;
   }

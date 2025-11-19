@@ -6,7 +6,7 @@ export interface Consulta {
   medico: string;
   especialidade: string;
   local: string;
-  data: string;   // ISO format: '2025-06-17'
-  hora: string;    // formato: '14:30'
+  data: string;
+  hora: string;
   status: StatusConsulta;
 }

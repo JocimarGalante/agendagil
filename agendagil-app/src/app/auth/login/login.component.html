@@ -1,8 +1,6 @@
 <div class="d-flex flex-column vh-100" style="background-color: #1b4f72">
-  <!-- Conteúdo principal centralizado -->
   <div class="d-flex justify-content-center align-items-center flex-grow-1">
     <div class="card p-4 shadow" style="width: 350px; border-radius: 10px">
-      <!-- Logo -->
       <div class="text-center mb-3">
         <img
           src="./../../../assets/logo.jpg"
@@ -11,7 +9,6 @@
         />
       </div>
 
-      <!-- Formulário -->
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
         <div>
           <label for="email" class="form-label text-white">Email</label>
@@ -77,7 +74,6 @@
           Entrar
         </button>
 
-        <!-- Esqueci a senha -->
         <div class="text-center mb-3">
           <a
             routerLink="/esqueci-senha"
@@ -88,7 +84,6 @@
         </div>
       </form>
 
-      <!-- Criar conta -->
       <div class="text-center mt-3 border-top pt-3">
         <span class="text-white d-block mb-1">Não tem uma conta?</span>
         <a

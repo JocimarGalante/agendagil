@@ -46,10 +46,8 @@ export class LoginComponent {
             showConfirmButton: false,
           });
 
-          // Verifica o toggle manual caso o tipo não venha da API
           let tipoUsuario = usuario.tipo;
 
-          // Redirecionamento com base no tipo de usuário
           switch (tipoUsuario) {
             case 'PACIENTE':
               this.router.navigate(['/dashboard-paciente']);

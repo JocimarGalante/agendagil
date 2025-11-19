@@ -5,7 +5,6 @@
   </div>
 
   <div class="d-flex justify-content-center">
-    <!-- Paciente -->
     <div *ngIf="usuario?.tipo === TipoUsuario.PACIENTE" class="card shadow-lg p-4" style="width: 320px; border-radius: 15px; background-color: #FFFFFF;">
       <div class="text-center mb-3">
         <i class="bi bi-person-heart fs-1 text-success"></i>
@@ -20,14 +19,12 @@
       </button>
     </div>
 
-    <!-- Médico -->
     <div *ngIf="usuario?.tipo === TipoUsuario.PROFISSIONAL_AUTONOMO" class="card shadow-lg p-4 mx-4" style="width: 320px; border-radius: 15px; background-color: #FFFFFF;">
       <div class="text-center mb-3">
         <i class="bi bi-stethoscope fs-1 text-primary"></i>
       </div>
       <h3 class="text-center text-primary mb-4">Área do Médico</h3>
       <p class="text-secondary text-center">Aqui você verá a lista dos pacientes agendados para consulta.</p>
-      <!-- Exemplo de lista, substituir pelo real -->
       <ul class="list-group">
         <li class="list-group-item">Paciente 1 - 10/07/2025</li>
         <li class="list-group-item">Paciente 2 - 11/07/2025</li>
@@ -35,7 +32,6 @@
       </ul>
     </div>
 
-    <!-- Administrador -->
     <div *ngIf="usuario?.tipo === TipoUsuario.ADMINISTRADOR" class="card shadow-lg p-4" style="width: 320px; border-radius: 15px; background-color: #FFFFFF;">
       <div class="text-center mb-3">
         <i class="bi bi-gear-fill fs-1 text-danger"></i>

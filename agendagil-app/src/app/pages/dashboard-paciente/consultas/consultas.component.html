@@ -42,8 +42,6 @@
             </span>
           </div>
         </div>
-
-        <!-- Ações da consulta -->
         <div class="mt-3 pt-3 border-top">
           <div class="d-flex justify-content-between align-items-center">
             <div class="text-muted small">
@@ -63,7 +61,6 @@
             </div>
 
             <div class="btn-group" role="group">
-              <!-- Botão Reagendar -->
               <button
                 *ngIf="podeReagendar(consulta)"
                 class="btn btn-outline-primary btn-sm"
@@ -72,8 +69,6 @@
               >
                 <i class="bi bi-calendar-plus me-1"></i> Reagendar
               </button>
-
-              <!-- Botão Cancelar -->
               <button
                 *ngIf="podeCancelar(consulta)"
                 class="btn btn-outline-danger btn-sm ms-2"
@@ -82,8 +77,6 @@
               >
                 <i class="bi bi-x-circle me-1"></i> Cancelar
               </button>
-
-              <!-- Indicador quando não há ações disponíveis -->
               <span
                 *ngIf="!podeCancelar(consulta) && !podeReagendar(consulta)"
                 class="text-muted small align-self-center"
@@ -93,8 +86,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Informações adicionais para consultas canceladas ou concluídas -->
         <div
           *ngIf="consulta.status === StatusConsulta.Cancelada || consulta.status === StatusConsulta.Concluida"
           class="mt-2 pt-2 border-top"
@@ -112,7 +103,6 @@
       </div>
     </div>
 
-    <!-- Estatísticas -->
     <div class="row mt-4">
       <div class="col-md-3">
         <div class="card text-center bg-light">

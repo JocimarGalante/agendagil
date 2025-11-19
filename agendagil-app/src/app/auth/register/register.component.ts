@@ -82,12 +82,10 @@ export class RegisterComponent implements OnInit {
       estado: [''],
       cep: [''],
 
-      // Campos para PACIENTE
       cpf: [''],
       dataNascimento: [''],
       genero: [''],
 
-      // Campos para PROFISSIONAL AUTÔNOMO
       crm: [''],
       especialidade: [''],
       formacao: [''],
@@ -95,7 +93,6 @@ export class RegisterComponent implements OnInit {
       descricao: [''],
       siteProfissional: [''],
 
-      // Campos para CLINICA
       cnpj: [''],
       razaoSocial: [''],
       responsavelTecnico: [''],
@@ -105,7 +102,6 @@ export class RegisterComponent implements OnInit {
       horarioFuncionamento: [''],
       descricaoClinica: [''],
 
-      // Plano selecionado
       planoSelecionado: [''],
     });
 
@@ -114,7 +110,6 @@ export class RegisterComponent implements OnInit {
       this.atualizarValidadoresPorTipo(tipo);
     });
 
-    // Observa mudanças na senha para avaliar força
     this.registerForm.get('senha')?.valueChanges.subscribe(() => {
       this.avaliarForcaSenha();
     });
@@ -225,7 +220,6 @@ export class RegisterComponent implements OnInit {
 
       const formValue = this.registerForm.value;
 
-      // Prepara os dados do usuário base
       const dadosUsuario: any = {
         nome: formValue.nome,
         email: formValue.email,
@@ -238,7 +232,6 @@ export class RegisterComponent implements OnInit {
         status: 'ativo'
       };
 
-      // Adiciona campos específicos baseados no tipo
       switch (formValue.tipo) {
         case TipoUsuario.PACIENTE:
           dadosUsuario.cpf = formValue.cpf;
@@ -268,7 +261,6 @@ export class RegisterComponent implements OnInit {
           break;
       }
 
-      // Chama o serviço de registro
       this.registerService.registrarUsuario(dadosUsuario, formValue.tipo, formValue.senha).subscribe({
         next: (usuario) => {
           this.carregando = false;
@@ -307,7 +299,6 @@ export class RegisterComponent implements OnInit {
         },
       });
     } else {
-      // Marca todos os campos como touched para mostrar erros
       this.marcarCamposComoTouched();
 
       Swal.fire({
@@ -326,13 +317,11 @@ export class RegisterComponent implements OnInit {
     });
   }
 
-  // Helper para mostrar erros no template
   campoInvalido(campo: string): boolean {
     const formControl = this.registerForm.get(campo);
     return !!(formControl && formControl.invalid && (formControl.dirty || formControl.touched));
   }
 
-  // Helper para mensagens de erro
   getMensagemErro(campo: string): string {
     const formControl = this.registerForm.get(campo);
 

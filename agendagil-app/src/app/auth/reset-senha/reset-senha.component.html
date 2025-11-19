@@ -1,4 +1,4 @@
-<!-- reset-senha.component.html -->
+
 <div
   class="d-flex flex-column vh-100"
   style="background-color: #1b4f72; padding: 20px;"
@@ -14,22 +14,18 @@
 
       <h5 class="text-white text-center mb-3">Redefinir Senha</h5>
 
-      <!-- Verificando sessão -->
       <div *ngIf="checkingSession" class="text-center text-white">
         <div class="spinner-border text-light mb-3" role="status">
           <span class="visually-hidden">Carregando...</span>
         </div>
         <p>Verificando link de recuperação...</p>
       </div>
-
-      <!-- Formulário de redefinição -->
       <div *ngIf="showForm && !checkingSession">
         <p class="text-white text-center small mb-4">
           Digite sua nova senha abaixo.
         </p>
 
         <form [formGroup]="resetForm" (ngSubmit)="onSubmit()">
-          <!-- Nova Senha -->
           <div class="mb-3">
             <label for="password" class="form-label text-white">Nova Senha</label>
             <input
@@ -56,8 +52,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Confirmar Senha -->
           <div class="mb-3">
             <label for="confirmPassword" class="form-label text-white">Confirmar Senha</label>
             <input

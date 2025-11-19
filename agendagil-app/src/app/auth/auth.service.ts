@@ -37,7 +37,6 @@ export class AuthService {
     }
   }
 
-  // 🔑 MÉTODO DE LOGIN
   login(email: string, senha: string): Observable<UsuarioBase> {
 
     const loginPromise = this.supabaseService.getClient().auth.signIn({
@@ -86,7 +85,6 @@ export class AuthService {
     );
   }
 
-  // 🔑 MÉTODO DE REGISTRO - VERSÃO FINAL CORRIGIDA
   registrarUsuario(
     email: string,
     senha: string,
@@ -127,7 +125,6 @@ export class AuthService {
     );
   }
 
-  // 🎯 ESTRATÉGIA DEFINITIVA DE REGISTRO
   private estrategiaRegistroDefinitiva(
     userId: string,
     email: string,
@@ -164,7 +161,6 @@ export class AuthService {
     );
   }
 
-  // 🔍 VERIFICAR SE USUÁRIO EXISTE
   private verificarUsuarioExistente(userId: string): Observable<boolean> {
     return from(
       this.supabaseService
@@ -184,7 +180,6 @@ export class AuthService {
     );
   }
 
-  // 📝 FAZER INSERT (quando usuário não existe)
   private fazerInsertUsuario(
     userId: string,
     email: string,
@@ -234,7 +229,6 @@ export class AuthService {
     );
   }
 
-  // 🔄 FAZER UPDATE (quando usuário já existe)
   private fazerUpdateUsuario(
     userId: string,
     email: string,
@@ -270,7 +264,6 @@ export class AuthService {
     );
   }
 
-  // 🆘 ESTRATÉGIA FALLBACK (se tudo falhar)
   private estrategiaFallback(
     userId: string,
     email: string,
@@ -303,7 +296,6 @@ export class AuthService {
     );
   }
 
-  // 🏗️ CRIAR PERFIL COMPLETO DO USUÁRIO
   private criarPerfilCompleto(
     userId: string,
     email: string,
@@ -359,7 +351,6 @@ export class AuthService {
     return perfil;
   }
 
-  // 🔍 BUSCAR USUÁRIO ATUALIZADO
   private buscarUsuarioAtualizado(
     userId: string,
     authResult: any
@@ -379,7 +370,6 @@ export class AuthService {
     );
   }
 
-  // ✅ CRIAR RESPOSTA DE SUCESSO
   private criarRespostaSucesso(usuarioData: any, authResult: any): any {
     return {
       success: true,
@@ -392,7 +382,6 @@ export class AuthService {
     };
   }
 
-  // 🔧 TRATAR ERROS DE REGISTRO
   private tratarErroRegistro(error: any): string {
 
     if (error.message?.includes('User already registered')) {
@@ -427,11 +416,6 @@ export class AuthService {
     return error.message || 'Erro ao fazer login. Tente novamente.';
   }
 
-  // ============================================================
-  // 🔐 MÉTODOS DE RESET DE SENHA - COMPLETOS E FUNCIONAIS
-  // ============================================================
-
-  // 🔑 MÉTODO PRINCIPAL DE RESET DE SENHA
   resetPassword(email: string): Observable<any> {
 
     const redirectTo = this.getResetPasswordRedirectUrl();
@@ -462,21 +446,17 @@ export class AuthService {
     );
   }
 
-  // 🔧 OBTER URL DE REDIRECT CORRETA
   private getResetPasswordRedirectUrl(): string {
-    // Use sua URL real em produção
     const isLocalhost = window.location.hostname === 'localhost' ||
                         window.location.hostname === '127.0.0.1';
 
     if (isLocalhost) {
       return `${window.location.origin}/reset-senha`;
     } else {
-      // 🔥 SUBSTITUA pela sua URL real de produção
       return 'https://agendagil.vercel.app/reset-senha';
     }
   }
 
-  // 🔑 ATUALIZAR SENHA (quando o usuário clica no link do email)
   updatePassword(newPassword: string): Observable<any> {
 
     return from(
@@ -491,7 +471,6 @@ export class AuthService {
           throw new Error(this.tratarErroUpdatePassword(result.error));
         }
 
-        // Fazer logout após atualizar senha
         this.supabaseService.getClient().auth.signOut();
 
         return {
@@ -509,7 +488,6 @@ export class AuthService {
     );
   }
 
-  // 🔍 VERIFICAR SE HÁ SESSÃO VÁLIDA PARA RECUPERAÇÃO
   hasPasswordRecoverySession(): Observable<boolean> {
     return new Observable((observer) => {
       try {
@@ -527,7 +505,6 @@ export class AuthService {
     });
   }
 
-  // 👤 OBTER USUÁRIO DA SESSÃO DE RECUPERAÇÃO
   getRecoverySessionUser(): { email: string; id: string } | null {
     try {
       const session = this.supabaseService.getClient().auth.session();
@@ -546,7 +523,6 @@ export class AuthService {
     }
   }
 
-  // 🔧 TRATAR ERROS DE RESET DE SENHA
   private tratarErroResetPassword(error: any): string {
     const message = error?.message || '';
 
@@ -569,7 +545,6 @@ export class AuthService {
     return 'Não foi possível enviar o email de recuperação. Tente novamente.';
   }
 
-  // 🔧 TRATAR ERROS DE ATUALIZAÇÃO DE SENHA
   private tratarErroUpdatePassword(error: any): string {
 
     const message = error?.message || '';
@@ -589,7 +564,6 @@ export class AuthService {
     return 'Erro ao atualizar senha. Tente novamente.';
   }
 
-  // 🔍 MÉTODO DE DEBUG PARA RESET DE SENHA
   debugResetPassword(email: string): Observable<any> {
 
     const redirectTo = this.getResetPasswordRedirectUrl();
@@ -610,7 +584,6 @@ export class AuthService {
     );
   }
 
-  // 🔑 MÉTODO PARA REENVIAR EMAIL DE CONFIRMAÇÃO
   reenviarEmailConfirmacao(email: string): Observable<any> {
 
     return new Observable((observer) => {
@@ -622,7 +595,6 @@ export class AuthService {
     });
   }
 
-  // ... (os outros métodos permanecem iguais)
 
   async isAuthenticated(): Promise<boolean> {
     try {
@@ -683,8 +655,6 @@ export class AuthService {
       return null;
     }
   }
-
-  // ... (outros métodos auxiliares)
 
   private fromSupabaseUsuario(usuario: any): UsuarioBase {
     if (!usuario) return null as any;

@@ -1,4 +1,3 @@
-// reset-senha.component.ts
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, AbstractControl } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -84,7 +83,6 @@ export class ResetSenhaComponent implements OnInit {
       return { passwordMismatch: true };
     }
 
-    // Limpar erro se as senhas coincidem
     if (confirmPassword && confirmPassword.errors?.['passwordMismatch']) {
       delete confirmPassword.errors['passwordMismatch'];
       if (Object.keys(confirmPassword.errors).length === 0) {
@@ -115,7 +113,6 @@ export class ResetSenhaComponent implements OnInit {
             confirmButtonColor: '#28b463',
             confirmButtonText: 'Fazer login'
           }).then(() => {
-            // Limpar storage e redirecionar
             localStorage.removeItem('usuarioLogado');
             localStorage.removeItem('tokenExpiration');
             this.router.navigate(['/login']);
@@ -150,7 +147,6 @@ export class ResetSenhaComponent implements OnInit {
         }
       });
     } else {
-      // Marcar todos os campos como touched para mostrar erros
       Object.keys(this.resetForm.controls).forEach(key => {
         const control = this.resetForm.get(key);
         if (control) {
