@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, from, of } from 'rxjs';
+import { Observable, from, of, forkJoin } from 'rxjs';
 import { map, catchError, switchMap } from 'rxjs/operators';
 import { SupabaseService } from '../core/services/supabase.service';
 import { Agendamento, Especialidade, Medico } from '@models/agendamento.model';
@@ -85,18 +85,32 @@ export class SchedulingService {
           throw new Error('Usuário não autenticado');
         }
 
-        return this.verificarAgendamentoExistente(
-          pacienteId,
-          agendamento.especialidadeId
-        ).pipe(
-          switchMap((jaExisteAgendamento) => {
-            if (jaExisteAgendamento) {
+        return forkJoin({
+          existeAgendamento: this.verificarAgendamentoExistente(
+            pacienteId,
+            agendamento.especialidadeId
+          ),
+          existeConflitoHorario: this.verificarConflitoHorario(
+            agendamento.medicoId,
+            agendamento.data,
+            agendamento.hora
+          )
+        }).pipe(
+          switchMap(({ existeAgendamento, existeConflitoHorario }) => {
+            if (existeAgendamento) {
               throw new Error(
                 `Você já possui uma consulta agendada para ${agendamento.especialidade}. Cancele a consulta existente antes de agendar uma nova.`
               );
             }
 
-            // VALIDAÇÃO ATÔMICA: Tentar inserir diretamente e verificar conflitos
+            if (existeConflitoHorario) {
+              throw new Error(
+                `O médico ${agendamento.medico} já possui uma consulta agendada para ${this.formatarData(
+                  agendamento.data
+                )} às ${agendamento.hora}. Por favor, escolha outro horário.`
+              );
+            }
+
             return this.tentarAgendamentoAtomico(agendamento, pacienteId);
           })
         );
@@ -108,10 +122,48 @@ export class SchedulingService {
     );
   }
 
+  private verificarConflitoHorario(
+    medicoId: string,
+    data: string,
+    hora: string
+  ): Observable<boolean> {
+    const medicoUUID = this.ensureUUID(medicoId);
+    const horaFormatada = this.formatarHoraParaComparacao(hora);
+
+    return from(
+      this.supabaseService
+        .getClient()
+        .from('consultas')
+        .select('id, paciente, medico')
+        .eq('medico_id', medicoUUID)
+        .eq('data', data)
+        .in('status', [1, 2])
+        .maybeSingle()
+    ).pipe(
+      map((result: any) => {
+        if (!result.data) return false;
+
+        // Converter hora do banco para formato de comparação
+        const horaBanco = this.formatarHoraParaComparacao(result.data.hora);
+        return horaBanco === horaFormatada;
+      }),
+      catchError((error) => {
+        if (error.code === 'PGRST116') {
+          return of(false);
+        }
+        console.error('Erro ao verificar conflito de horário:', error);
+        return of(false);
+      })
+    );
+  }
+
   private tentarAgendamentoAtomico(
     agendamento: Agendamento,
     pacienteId: string
   ): Observable<Agendamento> {
+    // Garantir formato correto da hora para o banco
+    const horaFormatada = this.formatarHoraParaBanco(agendamento.hora);
+
     const consultaSupabase = {
       paciente: agendamento.paciente,
       paciente_id: pacienteId,
@@ -121,7 +173,7 @@ export class SchedulingService {
       especialidade_id: this.ensureUUID(agendamento.especialidadeId),
       local: agendamento.local,
       data: agendamento.data,
-      hora: agendamento.hora,
+      hora: horaFormatada,
       status: agendamento.status,
       criado_em: new Date().toISOString(),
       atualizado_em: new Date().toISOString(),
@@ -137,12 +189,9 @@ export class SchedulingService {
     ).pipe(
       map((result: any) => {
         if (result.error) {
-          // Verificar se é erro de duplicação (código 23505 = unique_violation)
           if (result.error.code === '23505') {
             throw new Error(
-              `O médico ${
-                agendamento.medico
-              } já possui uma consulta agendada para ${this.formatarData(
+              `O médico ${agendamento.medico} já possui uma consulta agendada para ${this.formatarData(
                 agendamento.data
               )} às ${agendamento.hora}. Por favor, escolha outro horário.`
             );
@@ -160,6 +209,23 @@ export class SchedulingService {
     );
   }
 
+  private formatarHoraParaBanco(hora: string): string {
+    // Converter "HH:MM" para "HH:MM:SS"
+    if (hora && hora.length === 5 && hora.includes(':')) {
+      return `${hora}:00`;
+    }
+    return hora;
+  }
+
+  private formatarHoraParaComparacao(hora: string): string {
+    // Converter "HH:MM:SS" para "HH:MM" para comparação
+    if (hora && hora.includes(':')) {
+      const parts = hora.split(':');
+      return `${parts[0]}:${parts[1]}`;
+    }
+    return hora;
+  }
+
   private formatarData(data: string): string {
     return new Date(data).toLocaleDateString('pt-BR');
   }
@@ -175,7 +241,7 @@ export class SchedulingService {
         .select('id, especialidade, status')
         .eq('paciente_id', pacienteId)
         .eq('especialidade_id', especialidadeId)
-        .in('status', [1, 2]) // Status: Agendada (1) ou Confirmada (2)
+        .in('status', [1, 2])
     ).pipe(
       map((result: any) => {
         if (result.error) {
@@ -183,16 +249,15 @@ export class SchedulingService {
             'Erro ao verificar agendamentos existentes:',
             result.error
           );
-          return false; // Em caso de erro, permite o agendamento
+          return false;
         }
 
         const agendamentosExistentes = result.data || [];
-
         return agendamentosExistentes.length > 0;
       }),
       catchError((error) => {
         console.error('Erro ao verificar agendamentos existentes:', error);
-        return of(false); // Em caso de erro, permite o agendamento
+        return of(false);
       })
     );
   }
@@ -210,7 +275,7 @@ export class SchedulingService {
             .from('consultas')
             .select('id, especialidade, data, hora, status')
             .eq('paciente_id', pacienteId)
-            .in('status', [1, 2]) // Status: Agendada (1) ou Confirmada (2)
+            .in('status', [1, 2])
             .order('data', { ascending: true })
         );
       }),
@@ -256,52 +321,39 @@ export class SchedulingService {
   }
 
   getHorariosDisponiveis(medicoId: string, data: string): Observable<string[]> {
-    console.log('🔍 Buscando horários para médico ID:', medicoId);
+    const medicoUUID = this.ensureUUID(medicoId);
 
-    // Primeiro, buscar o nome do médico pelo ID
     return from(
       this.supabaseService
         .getClient()
-        .from('medicos')
-        .select('nome, id')
-        .eq('id', medicoId)
-        .single()
+        .from('consultas')
+        .select('hora')
+        .eq('medico_id', medicoUUID)
+        .eq('data', data)
+        .in('status', [1, 2])
     ).pipe(
-      switchMap((medicoResult: any) => {
-        if (medicoResult.error || !medicoResult.data) {
-          console.error('Médico não encontrado com ID:', medicoId);
-          return of(this.getHorariosPadrao());
+      map((result: any) => {
+        if (result.error) {
+          console.error('Erro ao buscar horários ocupados:', result.error);
+          return this.getHorariosPadrao();
         }
 
-        const medico = medicoResult.data;
-        console.log('👨‍⚕️ Médico encontrado:', medico);
+        // Converter horários do banco para formato de comparação
+        const horariosOcupados = result.data?.map((consulta: any) =>
+          this.formatarHoraParaComparacao(consulta.hora)
+        ) || [];
 
-        // Buscar horários ocupados usando o ID CORRETO do médico
-        return from(
-          this.supabaseService
-            .getClient()
-            .from('consultas')
-            .select('hora')
-            .eq('medico_id', medico.id) // ← Usar o ID do médico da tabela medicos
-            .eq('data', data)
-            .in('status', [1, 2])
-        ).pipe(
-          map((consultasResult: any) => {
-            const horariosOcupados =
-              consultasResult.data?.map((consulta: any) => consulta.hora) || [];
-            const todosHorarios = this.getHorariosPadrao();
+        const todosHorarios = this.getHorariosPadrao();
 
-            const horariosLivres = todosHorarios.filter(
-              (horario) => !horariosOcupados.includes(horario)
-            );
-
-            console.log('✅ Horários livres:', horariosLivres);
-            return horariosLivres;
-          })
+        // Filtrar horários não ocupados
+        const horariosLivres = todosHorarios.filter(
+          (horario) => !horariosOcupados.includes(horario)
         );
+
+        return horariosLivres;
       }),
       catchError((error) => {
-        console.error('Erro ao buscar médico:', error);
+        console.error('Erro ao carregar horários disponíveis:', error);
         return of(this.getHorariosPadrao());
       })
     );
