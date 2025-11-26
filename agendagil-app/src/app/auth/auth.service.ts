@@ -39,7 +39,6 @@ export class AuthService {
 
   // 🔑 MÉTODO DE LOGIN
   login(email: string, senha: string): Observable<UsuarioBase> {
-    console.log('🔐 Tentando login para:', email);
 
     const loginPromise = this.supabaseService.getClient().auth.signIn({
       email,
