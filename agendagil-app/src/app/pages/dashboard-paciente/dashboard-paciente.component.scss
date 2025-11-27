@@ -1,156 +1,20 @@
 .sidebar {
   width: 250px;
   min-height: 100vh;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s ease;
   z-index: 1000;
   display: flex;
   flex-direction: column;
   position: relative;
-  background: linear-gradient(135deg, #1B4F72 0%, #2C3E50 100%);
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
 }
 
 .sidebar.collapsed {
-  width: 70px;
-  overflow: hidden;
-}
-
-/* Efeitos modernos para os itens do menu */
-.sidebar .nav {
-  gap: 8px;
-  padding: 0 8px;
-}
-
-.sidebar .nav-item {
-  position: relative;
+  width: 60px;
   overflow: hidden;
 }
 
 .sidebar .nav-link {
   white-space: nowrap;
-  padding: 14px 16px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 12px;
-  margin: 4px 0;
-  border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  position: relative;
-  overflow: hidden;
-  color: #e8f4f8 !important;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* Efeito de brilho no hover */
-.sidebar .nav-link::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent);
-  transition: left 0.6s ease;
-}
-
-.sidebar .nav-link:hover::before {
-  left: 100%;
-}
-
-.sidebar .nav-link:hover {
-  background: linear-gradient(135deg, #28B463 0%, #239B56 100%);
-  transform: translateX(8px) scale(1.02);
-  box-shadow:
-    0 8px 25px rgba(40, 180, 99, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
-}
-
-/* Efeito para item ativo */
-.sidebar .nav-link.active {
-  background: linear-gradient(135deg, #3498DB 0%, #2980B9 100%);
-  box-shadow:
-    0 6px 20px rgba(52, 152, 219, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-  transform: translateX(5px);
-}
-
-/* Ícones com efeito */
-.sidebar .bi {
-  font-size: 1.3rem;
-  transition: all 0.3s ease;
-  min-width: 24px;
-  text-align: center;
-}
-
-.sidebar .nav-link:hover .bi {
-  transform: scale(1.2) rotate(5deg);
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-}
-
-/* Texto do menu */
-.sidebar .nav-link span {
-  transition: all 0.3s ease;
-  font-weight: 500;
-}
-
-/* Quando menu está recolhido */
-.sidebar.collapsed .nav-link {
-  text-align: center;
-  padding: 14px 8px;
-  justify-content: center;
-  border-radius: 10px;
-  margin: 4px 0;
-}
-
-.sidebar.collapsed .nav-link span {
-  display: none;
-}
-
-.sidebar.collapsed .nav-link .bi {
-  margin: 0;
-  font-size: 1.4rem;
-}
-
-.sidebar.collapsed h5 {
-  display: none;
-}
-
-/* Tooltip para menu recolhido */
-.sidebar.collapsed .nav-item {
-  position: relative;
-}
-
-.sidebar.collapsed .nav-item::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  z-index: 1001;
-  margin-left: 10px;
-}
-
-.sidebar.collapsed .nav-item:hover::after {
-  opacity: 1;
-  visibility: visible;
 }
 
 /* Container FIXO para a logo no rodapé */
@@ -163,51 +27,26 @@
   transition: all 0.3s ease;
 }
 
-/* Estilos da logo - VERSÃO MODERNA */
+/* Estilos da logo */
 .sidebar-logo {
   width: 180px;
   max-width: 100%;
   height: auto;
   transition: all 0.3s ease;
   opacity: 0.9;
-  border-radius: 16px;
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.08);
-  padding: 12px;
-  filter: brightness(1.05) contrast(1.1);
-  backdrop-filter: blur(10px);
 }
 
 .sidebar-logo:hover {
   opacity: 1;
-  transform: scale(1.03);
-  box-shadow:
-    0 6px 25px rgba(0, 0, 0, 0.2),
-    0 0 0 1px rgba(255, 255, 255, 0.15);
-  background: rgba(255, 255, 255, 0.12);
-  filter: brightness(1.1) contrast(1.15);
+  transform: scale(1.02);
 }
 
 /* Logo quando menu está recolhido */
 .sidebar-logo.logo-collapsed {
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
   object-fit: cover;
-  padding: 8px;
-  box-shadow:
-    0 3px 12px rgba(0, 0, 0, 0.15),
-    0 0 0 1px rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.sidebar-logo.logo-collapsed:hover {
-  transform: scale(1.05);
-  box-shadow:
-    0 4px 15px rgba(0, 0, 0, 0.2),
-    0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
 /* Ajuste para quando o menu está recolhido */
@@ -222,73 +61,27 @@
     top: 0;
     left: 0;
     height: 100%;
-    background: linear-gradient(135deg, #1B4F72 0%, #2C3E50 100%);
-    box-shadow: 8px 0 30px rgba(0, 0, 0, 0.2);
+    background-color: #1b4f72;
   }
 
   .sidebar.collapsed {
     transform: translateX(-100%);
   }
 
-  .sidebar .nav-link {
-    padding: 16px 20px;
-    margin: 6px 0;
-    border-radius: 14px;
-  }
-
   .sidebar-logo {
-    width: 160px;
-    padding: 10px;
-    border-radius: 14px;
+    width: 150px;
   }
 
   .logo-footer {
-    bottom: 25px;
-  }
-
-  .sidebar-logo.logo-collapsed {
-    width: 45px;
-    height: 45px;
-    border-radius: 10px;
-    padding: 6px;
-  }
-
-  /* Melhorar toque no mobile */
-  .sidebar .nav-link {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  .sidebar .nav-link:active {
-    transform: scale(0.98);
+    bottom: 15px;
   }
 }
 
-/* Animações de entrada */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.sidebar .nav-item {
-  animation: slideIn 0.4s ease forwards;
-}
-
-.sidebar .nav-item:nth-child(1) { animation-delay: 0.1s; }
-.sidebar .nav-item:nth-child(2) { animation-delay: 0.15s; }
-.sidebar .nav-item:nth-child(3) { animation-delay: 0.2s; }
-.sidebar .nav-item:nth-child(4) { animation-delay: 0.25s; }
-.sidebar .nav-item:nth-child(5) { animation-delay: 0.3s; }
-
+/* Garantir que o conteúdo do menu não sobreponha a logo */
 .flex-grow-1 {
   flex: 1;
   min-width: 0;
-  padding-bottom: 80px;
+  padding-bottom: 80px; /* Espaço para a logo */
 }
 
 .bg-main {
